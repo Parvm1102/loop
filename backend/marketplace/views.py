@@ -1,4 +1,5 @@
 import json
+import logging
 
 from django.db import transaction
 from django.utils import timezone
@@ -23,6 +24,8 @@ from .models import (
 )
 from .returns import is_return_eligible, return_deadline
 from .serializers import ListingSerializer, OrderSerializer
+
+log = logging.getLogger(__name__)
 
 # Demo helper: which forward transitions are allowed via /advance
 ADVANCE = {
@@ -144,12 +147,19 @@ def request_return(request, pk):
     )
     order.listing.unit.transition(UnitStates.RETURN_PENDING, actor=request.user)
     # Kick off async multi-source grading (VLM + similarity + metadata + history).
-    from grading.services import create_return_assessment
+    # A grading/setup failure must never fail the buyer's return — log and move on.
+    try:
+        from grading.services import create_return_assessment
 
-    create_return_assessment(order, photo_paths, client_metadatas=metadatas)
-    # Green credits: untouched return
+        create_return_assessment(order, photo_paths, client_metadatas=metadatas)
+    except Exception:  # noqa: BLE001
+        log.exception("could not start grading for order %s", order.id)
+    # Green credits: untouched return (non-critical — never block the return).
     if claimed:
-        award_credits(request.user, 5, "UNTOUCHED_RETURN", "Untouched return", order.id)
+        try:
+            award_credits(request.user, 5, "UNTOUCHED_RETURN", "Untouched return", order.id)
+        except Exception:  # noqa: BLE001
+            log.exception("could not award untouched-return credits for order %s", order.id)
     return Response(OrderSerializer(order).data)
 
 

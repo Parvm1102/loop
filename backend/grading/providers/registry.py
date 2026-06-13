@@ -68,7 +68,13 @@ def get_vlm_provider():
         for name in ("gemini", "openai", "modal"):
             provider = _build_openai_compat(name)
             if provider:
+                log.info("VLM provider auto-selected: %s", name)
                 return provider
+        log.warning(
+            "GRADING_VLM_PROVIDER=auto but no usable LLM provider configured "
+            "(set GEMINI_API_KEY + GRADING_VLM_PROVIDER=gemini for real grading); "
+            "using deterministic mock"
+        )
         return mock.MockVLM()
 
     log.warning("Unknown GRADING_VLM_PROVIDER %r; using mock", choice)

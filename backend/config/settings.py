@@ -145,6 +145,37 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # (Gemini via LLM_PROVIDERS/GEMINI_API_KEY). AI_MOCK is kept for tests/back-compat.
 AI_MOCK = os.environ.get("AI_MOCK", "1") == "1"
 
+# --- Logging ---
+# Without an explicit config Django suppresses INFO, so grading/rerouting
+# decisions and provider fallbacks never reach `docker compose logs`. Surface
+# our apps at INFO (override with LOG_LEVEL) while keeping third-party noise at
+# WARNING.
+LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "simple": {"format": "[{levelname}] {name}: {message}", "style": "{"},
+    },
+    "handlers": {
+        "console": {"class": "logging.StreamHandler", "formatter": "simple"},
+    },
+    "root": {"handlers": ["console"], "level": "WARNING"},
+    "loggers": {
+        name: {"handlers": ["console"], "level": LOG_LEVEL, "propagate": False}
+        for name in (
+            "grading",
+            "rerouting",
+            "marketplace",
+            "services",
+            "facility",
+            "core",
+            "catalog",
+            "greencredits",
+        )
+    },
+}
+
 # --- Loop business knobs ---
 STORAGE_DAILY_RATE_DEFAULT = 5          # ₹/day
 STORAGE_DAILY_RATE_BY_CATEGORY = {      # override per category
