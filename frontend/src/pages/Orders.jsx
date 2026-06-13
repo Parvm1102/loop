@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { api } from "../api";
+import { useAuth } from "../auth";
 import PhotoPicker from "../components/PhotoPicker";
 import { useToast } from "../components/Toast";
 
@@ -17,14 +19,33 @@ export default function Orders() {
   const [reason, setReason] = useState("CHANGED_MIND");
   const [untouchedClaim, setUntouchedClaim] = useState(false);
   const [photos, setPhotos] = useState([]);
+  const [photoMetas, setPhotoMetas] = useState([]);
+  const [comment, setComment] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
+  const [polls, setPolls] = useState(0);
   const { push } = useToast();
+  const { reload } = useAuth();
+  const navigate = useNavigate();
 
   const load = () => api.get("/orders").then(setOrders);
   useEffect(() => {
     load();
   }, []);
+
+  // A keep-it offer is computed asynchronously after a return is requested, so
+  // poll briefly until it appears (bounded so we stop if no offer is made).
+  useEffect(() => {
+    const awaiting = orders.some(
+      (o) => o.state === "RETURN_REQUESTED" && !o.prevention_offer
+    );
+    if (!awaiting || polls >= 8) return;
+    const t = setTimeout(() => {
+      setPolls((n) => n + 1);
+      load();
+    }, 3000);
+    return () => clearTimeout(t);
+  }, [orders, polls]);
 
   const advance = async (id) => {
     try {
@@ -39,6 +60,8 @@ export default function Orders() {
   const startReturn = (id) => {
     setReturning(id);
     setPhotos([]);
+    setPhotoMetas([]);
+    setComment("");
     setUntouchedClaim(false);
     setReason("CHANGED_MIND");
   };
@@ -50,16 +73,45 @@ export default function Orders() {
       const fd = new FormData();
       fd.append("reason", reason);
       fd.append("claimed_untouched", untouchedClaim ? "true" : "false");
+      if (comment.trim()) fd.append("comment", comment.trim());
       photos.forEach((f) => fd.append("photos", f));
+      fd.append("metadata", JSON.stringify(photoMetas));
       await api.postForm(`/orders/${id}/return`, fd);
       setReturning(null);
       setPhotos([]);
+      setPhotoMetas([]);
+      setComment("");
+      setPolls(0);
       load();
       push("Return scheduled", "success");
     } catch (e) {
       push(e.message || "Return failed", "error");
     } finally {
       setBusy(false);
+    }
+  };
+
+  const acceptOffer = async (offerId) => {
+    try {
+      const r = await api.post(`/rerouting/offers/${offerId}/accept`);
+      await load();
+      if (reload) reload();
+      push(
+        `Kept! ₹${r.cash_refund} refunded + ${r.green_credits} green credits added`,
+        "success"
+      );
+    } catch (e) {
+      push(e.message || "Could not accept offer", "error");
+    }
+  };
+
+  const declineOffer = async (offerId) => {
+    try {
+      await api.post(`/rerouting/offers/${offerId}/decline`);
+      await load();
+      push("No problem — your return will proceed", "info");
+    } catch (e) {
+      push(e.message || "Could not decline offer", "error");
     }
   };
 
@@ -90,14 +142,55 @@ export default function Orders() {
                     Mark delivered (demo)
                   </button>
                 )}
-                {o.state === "DELIVERED" && returning !== o.id && (
-                  <button
-                    className="secondary"
-                    onClick={() => startReturn(o.id)}
+                {o.prevention_offer && o.state === "RETURN_REQUESTED" && (
+                  <div
+                    className="card"
+                    style={{ padding: 12, borderColor: "var(--accent2)" }}
                   >
-                    Return
-                  </button>
+                    <strong>Keep it &amp; skip the return?</strong>
+                    <p className="muted" style={{ margin: "6px 0" }}>
+                      {o.prevention_offer.message}
+                    </p>
+                    <div className="row" style={{ marginTop: 6 }}>
+                      <button onClick={() => acceptOffer(o.prevention_offer.id)}>
+                        Keep &amp; get ₹{o.prevention_offer.cash_refund} +{" "}
+                        {o.prevention_offer.green_credits} credits
+                      </button>
+                      <button
+                        className="secondary"
+                        onClick={() => declineOffer(o.prevention_offer.id)}
+                      >
+                        No, return it
+                      </button>
+                    </div>
+                  </div>
                 )}
+                {o.state === "DELIVERED" &&
+                  returning !== o.id &&
+                  o.return_eligible && (
+                    <button
+                      className="secondary"
+                      onClick={() => startReturn(o.id)}
+                    >
+                      Return
+                    </button>
+                  )}
+                {o.state === "DELIVERED" &&
+                  returning !== o.id &&
+                  !o.return_eligible && (
+                    <div
+                      className="row"
+                      style={{ gap: 8, alignItems: "center", margin: 0 }}
+                    >
+                      <span className="muted">Return window closed</span>
+                      <button
+                        className="secondary"
+                        onClick={() => navigate("/resell")}
+                      >
+                        Resell instead
+                      </button>
+                    </div>
+                  )}
                 {returning === o.id && (
                   <div className="card" style={{ padding: 12 }}>
                     <div className="row">
@@ -122,8 +215,19 @@ export default function Orders() {
                         unopened
                       </label>
                     </div>
+                    <textarea
+                      placeholder="Add a comment (optional) — describe the issue"
+                      value={comment}
+                      onChange={(e) => setComment(e.target.value)}
+                      rows={2}
+                      style={{ marginTop: 8, width: "100%" }}
+                    />
                     <div style={{ marginTop: 10 }}>
-                      <PhotoPicker files={photos} onChange={setPhotos} />
+                      <PhotoPicker
+                        files={photos}
+                        onChange={setPhotos}
+                        onMetadata={setPhotoMetas}
+                      />
                     </div>
                     <div className="row" style={{ marginTop: 10 }}>
                       <button

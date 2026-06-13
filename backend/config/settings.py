@@ -21,6 +21,8 @@ INSTALLED_APPS = [
     "sellerportal",
     "facility",
     "greencredits",
+    "grading",
+    "rerouting",
 ]
 
 MIDDLEWARE = [
@@ -153,3 +155,104 @@ STORAGE_DAILY_RATE_BY_CATEGORY = {      # override per category
 }
 PRICE_STEPDOWN_EVERY_DAYS = 7
 PRICE_STEPDOWN_PCT = 10                 # −10% per step, floor band_lo
+
+# --- Return window (block returns past the window; offer resell instead) ---
+RETURN_WINDOW_DAYS = int(os.environ.get("RETURN_WINDOW_DAYS", "7"))
+RETURN_WINDOW_DAYS_BY_CATEGORY = {      # override per category
+    "electronics": 7,
+    "apparel": 14,
+    "footwear": 14,
+}
+
+# --- Celery (async return grading workers) ---
+# Reuses Redis. Broker/result default to the shared REDIS_URL, then to the
+# compose "redis" service. ALWAYS_EAGER runs tasks inline (tests / no broker).
+CELERY_BROKER_URL = os.environ.get(
+    "CELERY_BROKER_URL", _redis_url or "redis://redis:6379/0"
+)
+CELERY_RESULT_BACKEND = os.environ.get("CELERY_RESULT_BACKEND", CELERY_BROKER_URL)
+CELERY_TASK_ALWAYS_EAGER = os.environ.get("CELERY_TASK_ALWAYS_EAGER", "0") == "1"
+CELERY_TASK_EAGER_PROPAGATES = True
+CELERY_TASK_ACKS_LATE = True
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+
+# --- AI return grading ---
+# Multi-source grader: VLM (OpenAI-compatible) + perceptual-hash similarity +
+# EXIF metadata + buyer history. "auto" picks gemini when a key is present,
+# else the deterministic mock so local/dev never breaks.
+GRADING_VLM_PROVIDER = os.environ.get("GRADING_VLM_PROVIDER", "auto")
+GRADING_EMBEDDING_PROVIDER = os.environ.get("GRADING_EMBEDDING_PROVIDER", "phash")
+GRADING_VLM_TIMEOUT = float(os.environ.get("GRADING_VLM_TIMEOUT", "30"))
+GRADING_VLM_MAX_IMAGES = int(os.environ.get("GRADING_VLM_MAX_IMAGES", "6"))
+GRADING_REFERENCE_CACHE_TTL = int(os.environ.get("GRADING_REFERENCE_CACHE_TTL", "86400"))
+
+# OpenAI-compatible LLM providers. Adding a provider = a config entry, not code.
+# Gemini is reached via Google's OpenAI-compatibility endpoint.
+LLM_PROVIDERS = {
+    "gemini": {
+        "base_url": os.environ.get(
+            "GEMINI_BASE_URL",
+            "https://generativelanguage.googleapis.com/v1beta/openai/",
+        ),
+        "api_key": os.environ.get("GEMINI_API_KEY", ""),
+        "model": os.environ.get("GEMINI_MODEL", "gemini-2.5-flash"),
+        # gemini-2.5-flash "thinks" by default (~30s grades). Grading is a
+        # structured-extraction task, not deep reasoning, so cap it. "low" keeps
+        # quality while cutting most of the latency; "none" disables thinking.
+        "reasoning_effort": os.environ.get("GEMINI_REASONING_EFFORT", "low"),
+        "requires_key": True,
+    },
+    "openai": {
+        "base_url": os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1"),
+        "api_key": os.environ.get("OPENAI_API_KEY", ""),
+        "model": os.environ.get("OPENAI_MODEL", "gpt-4o-mini"),
+        "requires_key": True,
+    },
+    "modal": {  # self-hosted vLLM speaks the OpenAI protocol — fill when deployed
+        "base_url": os.environ.get("MODAL_BASE_URL", ""),
+        "api_key": os.environ.get("MODAL_API_KEY", ""),
+        "model": os.environ.get("MODAL_MODEL", ""),
+        "requires_key": False,
+    },
+}
+
+# --- Rerouting (return disposition: RESELL / REFURBISH / P2P / DONATE) --------
+# Decides what to do with a returned unit. Two strategies run in parallel: a
+# deterministic Expected-Value optimizer and an LLM. The LLM is authoritative;
+# EV is the fallback and always supplies the money breakdown. Reuses the same
+# LLM_PROVIDERS table as grading; "mock" (or no key) -> EV result, no network.
+REROUTING_LLM_PROVIDER = os.environ.get("REROUTING_LLM_PROVIDER", "auto")
+REROUTING_LLM_TIMEOUT = float(os.environ.get("REROUTING_LLM_TIMEOUT", "20"))
+
+# Logistics cost model. rate = RATE_PER_KM[size] * FRAG_MULT[fragility]; a return
+# leg + an outbound resale leg are both charged at the inter-city distance, while
+# P2P/DONATE stay in-city (LOCAL_KM). Big items need a truck => much higher /km.
+REROUTING_RATE_PER_KM = {"small": 3.0, "big": 12.0}      # ₹ per km
+REROUTING_FRAGILITY_MULT = {"rigid": 1.0, "delicate": 1.5}
+REROUTING_LOCAL_KM = float(os.environ.get("REROUTING_LOCAL_KM", "15"))
+
+# Value recovered per route. Repair restores condition but costs money; refurb
+# and P2P resell at a discount (prototype assumption).
+REROUTING_REPAIR_FACTOR = 0.4        # repair cost = (1-quality)*MRP*factor
+REROUTING_REPAIR_MAX_PCT = 0.6       # cap repair at this fraction of MRP
+REROUTING_REFURB_RESALE_PCT = 0.6    # refurbished resale price = pct * MRP
+REROUTING_P2P_RESALE_PCT = 0.7       # P2P price = pct * est_value
+REROUTING_REFURB_TARGET_QUALITY = 0.85  # quality a refurbished unit is restored to
+
+# Risk adjustment: revenue is multiplied by a realization probability so quality
+# and fraud actually matter (else resale/P2P always win). realize =
+# sell_through(quality) * (1 - fraud_risk); donate has no revenue so it is the
+# risk-immune floor.
+REROUTING_SELL_THROUGH_BASE = 0.5    # realization at quality 0; ramps to 1.0 at quality 1
+REROUTING_FRAUD_RESALE_RISK = 1.0    # how strongly fraud discounts resale revenue
+REROUTING_REFURB_FRAUD_MITIGATION = 0.5  # inspection during refurb catches some fraud
+
+# Return-prevention offer (keep-it: partial cash refund + green credits). Only
+# offered when every route loses money and fraud is low. Cash-majority so the
+# customer feels fairly compensated; credits are valued below par to the company
+# because they guarantee a next order.
+REROUTING_OFFER_FRAUD_MAX = 0.3      # don't bribe likely fraudsters
+REROUTING_OFFER_MIN_QUALITY = 0.4    # item must be genuinely usable to keep
+REROUTING_OFFER_CASH_SHARE = 0.6     # fraction of make-whole paid as cash (rest credits)
+REROUTING_CREDIT_COST_FACTOR = 0.9   # ₹ cost to company per 1 credit of perceived value
+

@@ -58,6 +58,9 @@ class OrderStates(models.TextChoices):
     RETURN_RECEIVED = "RETURN_RECEIVED", "Return received"
     REFUNDED = "REFUNDED", "Refunded"
     SETTLED = "SETTLED", "Settled"
+    # Buyer accepted a keep-it offer (partial refund + green credits) instead of
+    # returning — the return is prevented and the item stays with the buyer.
+    PREVENTED = "PREVENTED", "Return prevented"
 
 
 class ReturnReasons(models.TextChoices):
@@ -82,6 +85,8 @@ class Order(StatefulItem):
     )
     claimed_untouched = models.BooleanField(default=False)
     photos = models.JSONField(default=list, blank=True)  # return-time photos (buyer)
+    return_comment = models.TextField(blank=True)  # buyer's free-text return note
+    delivered_at = models.DateTimeField(blank=True, null=True)  # return-window anchor
 
     class Meta:
         indexes = [models.Index(fields=["state"])]

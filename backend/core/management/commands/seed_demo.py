@@ -24,6 +24,7 @@ from marketplace.models import (
 )
 from sellerportal.models import RuleActions, SellerRule
 from services import ai
+from rerouting.geo import CITY_COORDS
 
 PRODUCTS = [
     ("boAt Rockerz 450 Headphones", "electronics", 1999),
@@ -79,23 +80,40 @@ class Command(BaseCommand):
 
         rng = random.Random(42)
 
-        # --- users ---
-        buyer = User.objects.create_user(
-            "buyer1", password="demo1234", role=Roles.BUYER
+        # --- users (with coarse locations for return-logistics distance) ---
+        cities = list(CITY_COORDS)
+
+        def _locate(user, city):
+            user.city = city
+            user.lat, user.lng = CITY_COORDS[city]
+            user.save(update_fields=["city", "lat", "lng"])
+            return user
+
+        buyer = _locate(
+            User.objects.create_user("buyer1", password="demo1234", role=Roles.BUYER),
+            "Delhi",
         )
-        reseller = User.objects.create_user(
-            "rahul", password="demo1234", role=Roles.BUYER
+        reseller = _locate(
+            User.objects.create_user("rahul", password="demo1234", role=Roles.BUYER),
+            "Mumbai",
         )
-        seller = User.objects.create_user(
-            "seller1", password="demo1234", role=Roles.SELLER
+        seller = _locate(
+            User.objects.create_user("seller1", password="demo1234", role=Roles.SELLER),
+            "Bengaluru",
         )
-        User.objects.create_user(
-            "facility1", password="demo1234", role=Roles.FACILITY
+        _locate(
+            User.objects.create_user(
+                "facility1", password="demo1234", role=Roles.FACILITY
+            ),
+            "Bengaluru",
         )
         User.objects.create_superuser("admin", password="admin1234")
         extra_buyers = [
-            User.objects.create_user(n, password="demo1234", role=Roles.BUYER)
-            for n in FIRST_NAMES
+            _locate(
+                User.objects.create_user(n, password="demo1234", role=Roles.BUYER),
+                cities[i % len(cities)],
+            )
+            for i, n in enumerate(FIRST_NAMES)
         ]
 
         # --- products + NEW listings ---

@@ -11,6 +11,14 @@ class Roles(models.TextChoices):
 class User(AbstractUser):
     role = models.CharField(max_length=10, choices=Roles.choices, default=Roles.BUYER)
     # Buyers also resell; no extra role needed.
+    # Open-ended buyer/seller profile (JSONB): size chart, current devices,
+    # preferences, etc. Used by AI grading and future personalization.
+    profile = models.JSONField(default=dict, blank=True)
+    # Coarse location for return-logistics cost (distance seller <-> buyer).
+    # City is a label; lat/lng drive the haversine distance in rerouting.geo.
+    city = models.CharField(max_length=80, blank=True)
+    lat = models.FloatField(blank=True, null=True)
+    lng = models.FloatField(blank=True, null=True)
 
 
 class TimeStamped(models.Model):

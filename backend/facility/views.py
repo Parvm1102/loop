@@ -50,7 +50,26 @@ def receive(request):
     ).first()
     return_photos = return_order.photos if return_order else []
 
-    graded = ai.grade(unit.product.id, untouched=unit.untouched, image_paths=return_photos)
+    # Prefer the multi-source assessment computed asynchronously at return time;
+    # fall back to the single-shot heuristic grader if none completed.
+    from grading.models import AssessmentStatus, GradingAssessment
+
+    assessment = (
+        GradingAssessment.objects.filter(unit=unit, status=AssessmentStatus.DONE)
+        .exclude(suggested_grade="")
+        .order_by("-created_at")
+        .first()
+    )
+    if assessment and assessment.suggested_grade:
+        graded = {
+            "grade": assessment.suggested_grade,
+            "confidence": assessment.confidence or 0.0,
+            "source": f"grading:{assessment.vlm_provider or 'mock'}",
+        }
+    else:
+        graded = ai.grade(
+            unit.product.id, untouched=unit.untouched, image_paths=return_photos
+        )
     priced = ai.price(unit.product.id, unit.product.mrp, graded["grade"])
     unit.grade = graded["grade"]
     unit.grade_confidence = graded["confidence"]
@@ -64,27 +83,21 @@ def receive(request):
         ai_source=graded["source"],
     )
 
-    # AI routing recommendation
+    # Disposition recommendation from the rerouting engine (computed async, LLM ∥
+    # EV, when the return was requested). Stored as a UnitEvent for audit/UI.
     try:
-        routing = ai.route(
-            product_id=unit.product.id,
-            grade=unit.grade,
-            grade_confidence=unit.grade_confidence or 0.0,
-            est_value=unit.est_value or 0,
-            mrp=unit.product.mrp or 0,
-            untouched=unit.untouched,
-            storage_cost=unit.storage_cost_accrued or 0,
-            category=unit.product.category,
-        )
-        # Store the recommendation as a UnitEvent for audit/UI
-        from catalog.models import UnitEvent
+        from rerouting.services import recommendation_for
 
-        UnitEvent.objects.create(
-            unit=unit,
-            type="ROUTING_RECOMMENDATION",
-            actor=request.user,
-            payload={"routing": routing},
-        )
+        routing = recommendation_for(unit)
+        if routing:
+            from catalog.models import UnitEvent
+
+            UnitEvent.objects.create(
+                unit=unit,
+                type="ROUTING_RECOMMENDATION",
+                actor=request.user,
+                payload={"routing": routing},
+            )
     except Exception:
         routing = None
 
