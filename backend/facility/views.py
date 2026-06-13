@@ -83,27 +83,21 @@ def receive(request):
         ai_source=graded["source"],
     )
 
-    # AI routing recommendation
+    # Disposition recommendation from the rerouting engine (computed async, LLM ∥
+    # EV, when the return was requested). Stored as a UnitEvent for audit/UI.
     try:
-        routing = ai.route(
-            product_id=unit.product.id,
-            grade=unit.grade,
-            grade_confidence=unit.grade_confidence or 0.0,
-            est_value=unit.est_value or 0,
-            mrp=unit.product.mrp or 0,
-            untouched=unit.untouched,
-            storage_cost=unit.storage_cost_accrued or 0,
-            category=unit.product.category,
-        )
-        # Store the recommendation as a UnitEvent for audit/UI
-        from catalog.models import UnitEvent
+        from rerouting.services import recommendation_for
 
-        UnitEvent.objects.create(
-            unit=unit,
-            type="ROUTING_RECOMMENDATION",
-            actor=request.user,
-            payload={"routing": routing},
-        )
+        routing = recommendation_for(unit)
+        if routing:
+            from catalog.models import UnitEvent
+
+            UnitEvent.objects.create(
+                unit=unit,
+                type="ROUTING_RECOMMENDATION",
+                actor=request.user,
+                payload={"routing": routing},
+            )
     except Exception:
         routing = None
 

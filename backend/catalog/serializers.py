@@ -62,16 +62,8 @@ class ItemUnitSerializer(serializers.ModelSerializer):
 
     def get_routing_recommendation(self, obj):
         try:
-            from services import ai
-            return ai.route(
-                product_id=obj.product.id,
-                grade=obj.grade or "B",
-                grade_confidence=obj.grade_confidence or 0.0,
-                est_value=obj.est_value or 0,
-                mrp=obj.product.mrp or 0,
-                untouched=obj.untouched,
-                storage_cost=obj.storage_cost_accrued or 0,
-                category=obj.product.category,
-            )
+            from rerouting.services import recommendation_for
+
+            return recommendation_for(obj)
         except Exception:
             return None

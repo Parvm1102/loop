@@ -22,6 +22,7 @@ INSTALLED_APPS = [
     "facility",
     "greencredits",
     "grading",
+    "rerouting",
 ]
 
 MIDDLEWARE = [
@@ -214,3 +215,44 @@ LLM_PROVIDERS = {
         "requires_key": False,
     },
 }
+
+# --- Rerouting (return disposition: RESELL / REFURBISH / P2P / DONATE) --------
+# Decides what to do with a returned unit. Two strategies run in parallel: a
+# deterministic Expected-Value optimizer and an LLM. The LLM is authoritative;
+# EV is the fallback and always supplies the money breakdown. Reuses the same
+# LLM_PROVIDERS table as grading; "mock" (or no key) -> EV result, no network.
+REROUTING_LLM_PROVIDER = os.environ.get("REROUTING_LLM_PROVIDER", "auto")
+REROUTING_LLM_TIMEOUT = float(os.environ.get("REROUTING_LLM_TIMEOUT", "20"))
+
+# Logistics cost model. rate = RATE_PER_KM[size] * FRAG_MULT[fragility]; a return
+# leg + an outbound resale leg are both charged at the inter-city distance, while
+# P2P/DONATE stay in-city (LOCAL_KM). Big items need a truck => much higher /km.
+REROUTING_RATE_PER_KM = {"small": 3.0, "big": 12.0}      # ₹ per km
+REROUTING_FRAGILITY_MULT = {"rigid": 1.0, "delicate": 1.5}
+REROUTING_LOCAL_KM = float(os.environ.get("REROUTING_LOCAL_KM", "15"))
+
+# Value recovered per route. Repair restores condition but costs money; refurb
+# and P2P resell at a discount (prototype assumption).
+REROUTING_REPAIR_FACTOR = 0.4        # repair cost = (1-quality)*MRP*factor
+REROUTING_REPAIR_MAX_PCT = 0.6       # cap repair at this fraction of MRP
+REROUTING_REFURB_RESALE_PCT = 0.6    # refurbished resale price = pct * MRP
+REROUTING_P2P_RESALE_PCT = 0.7       # P2P price = pct * est_value
+REROUTING_REFURB_TARGET_QUALITY = 0.85  # quality a refurbished unit is restored to
+
+# Risk adjustment: revenue is multiplied by a realization probability so quality
+# and fraud actually matter (else resale/P2P always win). realize =
+# sell_through(quality) * (1 - fraud_risk); donate has no revenue so it is the
+# risk-immune floor.
+REROUTING_SELL_THROUGH_BASE = 0.5    # realization at quality 0; ramps to 1.0 at quality 1
+REROUTING_FRAUD_RESALE_RISK = 1.0    # how strongly fraud discounts resale revenue
+REROUTING_REFURB_FRAUD_MITIGATION = 0.5  # inspection during refurb catches some fraud
+
+# Return-prevention offer (keep-it: partial cash refund + green credits). Only
+# offered when every route loses money and fraud is low. Cash-majority so the
+# customer feels fairly compensated; credits are valued below par to the company
+# because they guarantee a next order.
+REROUTING_OFFER_FRAUD_MAX = 0.3      # don't bribe likely fraudsters
+REROUTING_OFFER_MIN_QUALITY = 0.4    # item must be genuinely usable to keep
+REROUTING_OFFER_CASH_SHARE = 0.6     # fraction of make-whole paid as cash (rest credits)
+REROUTING_CREDIT_COST_FACTOR = 0.9   # ₹ cost to company per 1 credit of perceived value
+

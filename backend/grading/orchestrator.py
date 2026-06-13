@@ -15,7 +15,7 @@ from django.core.files.storage import default_storage
 from django.utils import timezone
 
 from . import history, metadata, scoring
-from .models import AssessmentStatus, GradingAssessment, GradingImage, ImageRole
+from .models import AssessmentContext, AssessmentStatus, GradingAssessment, GradingImage, ImageRole
 from .providers import base as pbase
 from .providers import mock as pmock
 from .providers import registry
@@ -153,6 +153,30 @@ def run_history(aid) -> dict:
 
 # --- aggregation ------------------------------------------------------------
 
+def _persist_grader_attributes(product, vlm_result, vlm_provider) -> None:
+    """Persist the grader-derived classification onto the product's open-ended
+    attributes (JSONB) so routing and future assessments can reuse it without
+    re-running the VLM. Only a real VLM (not the mock/empty fallback) may mutate
+    catalog data, and we merge so user-entered keys (brand, color, ...) survive."""
+    if vlm_provider in ("", "mock", "error", "unknown"):
+        return
+    derived = {
+        "size_class": vlm_result.get("size_class"),
+        "fragility": vlm_result.get("fragility"),
+        "category": product.category or None,
+    }
+    derived = {k: v for k, v in derived.items() if v}
+    if not derived:
+        return
+    attrs = dict(product.attributes or {})
+    if all(attrs.get(k) == v for k, v in derived.items()):
+        return  # already current — nothing to write
+    attrs.update(derived)
+    product.attributes = attrs
+    product.save(update_fields=["attributes", "updated_at"])
+    log.info("persisted grader attributes for product %s: %s", product.id, derived)
+
+
 def aggregate(aid, partials) -> None:
     """Merge source outputs, blend scores, finalize the assessment."""
     merged = {}
@@ -187,6 +211,25 @@ def aggregate(aid, partials) -> None:
         "assessment %s done: grade=%s quality=%.2f fraud=%.2f conf=%.2f",
         aid, a.suggested_grade, a.quality_score, a.fraud_score, a.confidence,
     )
+
+    # Persist the grader's durable classification (size/fragility/category) onto
+    # the product so routing and future assessments reuse it. Best-effort: an
+    # attribute write must never break grading.
+    try:
+        _persist_grader_attributes(a.unit.product, vlm_result, a.vlm_provider)
+    except Exception:  # noqa: BLE001
+        log.exception("could not persist grader attributes for assessment %s", aid)
+
+    # Hand off to the rerouting engine (RESELL/REFURBISH/P2P/DONATE). Only return
+    # assessments get a disposition decision, and a failure here must never break
+    # grading itself.
+    if a.context == AssessmentContext.RETURN:
+        try:
+            from rerouting.tasks import decide_route
+
+            decide_route.delay(a.id)
+        except Exception:  # noqa: BLE001 — broker down shouldn't break grading
+            log.exception("could not enqueue rerouting for assessment %s", aid)
 
 
 def run_all_sync(aid) -> None:

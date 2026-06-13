@@ -43,7 +43,7 @@ export default function FacilityPortal() {
     try {
       if (!rec) return;
       const action = rec.recommendation;
-      if (action === "RELIST" || action === "REFURBISH") {
+      if (action === "RESELL" || action === "REFURBISH" || action === "P2P") {
         await api.post(`/facility/units/${unitId}/relist`);
       } else if (action === "DONATE") {
         await api.post(`/facility/units/${unitId}/dispose`, {
@@ -62,10 +62,10 @@ export default function FacilityPortal() {
   };
 
   const overrideRecommendation = async (unitId, choice) => {
-    // choice: RELIST, DONATE, LIQUIDATE, REFURBISH
+    // choice: RESELL, REFURBISH, P2P, DONATE, LIQUIDATE
     setMsg("");
     try {
-      if (choice === "RELIST" || choice === "REFURBISH") {
+      if (choice === "RESELL" || choice === "REFURBISH" || choice === "P2P") {
         await api.post(`/facility/units/${unitId}/relist`);
       } else if (choice === "DONATE") {
         await api.post(`/facility/units/${unitId}/dispose`, {
@@ -164,8 +164,9 @@ export default function FacilityPortal() {
                 <option value="" disabled>
                   Override…
                 </option>
-                <option value="RELIST">Relist</option>
+                <option value="RESELL">Resell (relist)</option>
                 <option value="REFURBISH">Refurbish</option>
+                <option value="P2P">Peer-to-peer</option>
                 <option value="DONATE">Donate</option>
                 <option value="LIQUIDATE">Liquidate</option>
               </select>

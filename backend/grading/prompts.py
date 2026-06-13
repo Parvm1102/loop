@@ -23,6 +23,12 @@ SYSTEM_PROMPT = (
     "stretching, missing tags; adapt for other categories). Never assume the "
     "buyer's reason or photos are truthful — verify against the reference images "
     "and look for signs of edited/screenshotted/reused images. "
+    "Also classify the item's logistics profile from the product type (not the "
+    "photo background): size_class is 'big' only if moving it needs a truck or "
+    "two people (refrigerator, AC, sofa, washing machine, treadmill, mattress), "
+    "otherwise 'small'; fragility is 'delicate' if it is easily damaged in "
+    "transit (glass, ceramics, screen-dominant electronics, fine fabrics), "
+    "otherwise 'rigid'. "
     "Respond with ONLY a single JSON object, no prose."
 )
 
@@ -39,10 +45,64 @@ _OUTPUT_SHAPE = """Return JSON with EXACTLY these keys:
   "condition_summary": string,       // one or two sentences
   "suggested_grade": "A"|"B"|"C"|"D",// A=like new, B=good, C=worn, D=poor
   "quality_estimate": float,         // 0..1 overall physical condition (1=perfect)
+  "size_class": "small"|"big",       // "big" only if it needs a truck/2-person haul, else "small"
+  "fragility": "rigid"|"delicate",   // "delicate" if easily damaged in transit, else "rigid"
   "fraud_flags": [string],           // e.g. "reason_mismatch","image_edited","wrong_item","reused_image"
   "confidence": float                // 0..1 your confidence in this assessment
 }
 All floats in [0,1]. If you cannot see something, say so in notes and lower confidence."""
+
+
+def grade_schema():
+    """Strict JSON Schema for constrained decoding (OpenAI-compatible json_schema).
+
+    Mirrors _OUTPUT_SHAPE so capable models *cannot* emit reasoning tags or prose
+    around the answer. strict mode requires every key in "required" and
+    additionalProperties:false; normalize_vlm_output still runs as a safety net.
+    """
+    num = {"type": "number"}
+    str_arr = {"type": "array", "items": {"type": "string"}}
+    return {
+        "name": "return_grade",
+        "strict": True,
+        "schema": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "criteria": str_arr,
+                "per_image": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "properties": {
+                            "index": {"type": "integer"},
+                            "visible_defects": str_arr,
+                            "quality": num,
+                            "notes": {"type": "string"},
+                        },
+                        "required": ["index", "visible_defects", "quality", "notes"],
+                    },
+                },
+                "defects": str_arr,
+                "item_matches_reference": {"type": "boolean"},
+                "match_confidence": num,
+                "condition_summary": {"type": "string"},
+                "suggested_grade": {"type": "string", "enum": list(GRADES)},
+                "quality_estimate": num,
+                "size_class": {"type": "string", "enum": ["small", "big"]},
+                "fragility": {"type": "string", "enum": ["rigid", "delicate"]},
+                "fraud_flags": str_arr,
+                "confidence": num,
+            },
+            "required": [
+                "criteria", "per_image", "defects", "item_matches_reference",
+                "match_confidence", "condition_summary", "suggested_grade",
+                "quality_estimate", "size_class", "fragility", "fraud_flags",
+                "confidence",
+            ],
+        },
+    }
 
 
 def _data_uri(img):
@@ -115,6 +175,12 @@ def _str_list(v):
     return [str(x) for x in v if x is not None]
 
 
+def _enum(v, allowed, default):
+    """Coerce to one of `allowed` (case-insensitive), else `default`."""
+    s = str(v or "").strip().lower()
+    return s if s in allowed else default
+
+
 def normalize_vlm_output(data, n_uploaded=0):
     """Coerce raw model JSON into our stable schema; tolerate missing/odd keys."""
     data = data if isinstance(data, dict) else {}
@@ -150,6 +216,8 @@ def normalize_vlm_output(data, n_uploaded=0):
         "condition_summary": str(data.get("condition_summary", "")),
         "suggested_grade": grade,
         "quality_estimate": _clamp01(data.get("quality_estimate"), 0.5),
+        "size_class": _enum(data.get("size_class"), ("small", "big"), "small"),
+        "fragility": _enum(data.get("fragility"), ("rigid", "delicate"), "rigid"),
         "fraud_flags": _str_list(data.get("fraud_flags")),
         "confidence": _clamp01(data.get("confidence"), 0.5),
         "source": str(data.get("source", "")),

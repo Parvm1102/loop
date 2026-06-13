@@ -32,6 +32,23 @@ def _family(category: str) -> str:
     return "default"
 
 
+# Items that need a truck / two people to move.
+_BIG_KEYWORDS = (
+    "refrigerator", "fridge", "air conditioner", " ac ", "sofa", "couch",
+    "washing machine", "treadmill", "mattress", "television", " tv",
+)
+_DELICATE_KEYWORDS = ("glass", "ceramic", "mirror", "vase", "bulb")
+
+
+def _logistics(category: str, title: str):
+    """Deterministic size_class + fragility from category/title keywords."""
+    c = (category or "").lower()
+    t = f" {(title or '').lower()} "
+    size = "big" if any(k in t or k in c for k in _BIG_KEYWORDS) else "small"
+    delicate = c == "electronics" or any(k in t for k in _DELICATE_KEYWORDS)
+    return size, ("delicate" if delicate else "rigid")
+
+
 class MockVLM(base.VLMProvider):
     name = "mock"
 
@@ -75,6 +92,8 @@ class MockVLM(base.VLMProvider):
         # Mock can't truly detect mismatch; assume match unless reason says so.
         matches = reason != "DIDNT_MATCH"
 
+        size_class, fragility = _logistics(category, product.get("title"))
+
         return prompts.normalize_vlm_output(
             {
                 "criteria": _criteria(family),
@@ -85,6 +104,8 @@ class MockVLM(base.VLMProvider):
                 "condition_summary": f"Mock grade {grade} for {category or 'item'}.",
                 "suggested_grade": grade,
                 "quality_estimate": quality,
+                "size_class": size_class,
+                "fragility": fragility,
                 "fraud_flags": [] if matches else ["wrong_item"],
                 "confidence": 0.6,
                 "source": self.name,

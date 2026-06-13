@@ -58,6 +58,9 @@ class OrderStates(models.TextChoices):
     RETURN_RECEIVED = "RETURN_RECEIVED", "Return received"
     REFUNDED = "REFUNDED", "Refunded"
     SETTLED = "SETTLED", "Settled"
+    # Buyer accepted a keep-it offer (partial refund + green credits) instead of
+    # returning — the return is prevented and the item stays with the buyer.
+    PREVENTED = "PREVENTED", "Return prevented"
 
 
 class ReturnReasons(models.TextChoices):
