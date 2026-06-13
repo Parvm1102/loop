@@ -15,13 +15,22 @@ export default function HealthCard() {
 
   return (
     <div className="page" style={{ maxWidth: 640 }}>
-      <div className="card">
+      <div className="card no-hover">
         <div className="row">
           <h2 style={{ margin: 0 }}>Product Health Card</h2>
           <span
             className="badge right"
             style={{ background: "#14532d", color: "#86efac" }}
           >
+            <img
+              src="/logo.png"
+              alt="Loop"
+              style={{
+                height: 14,
+                marginRight: 8,
+                verticalAlign: "middle",
+              }}
+            />
             <FaCheck style={{ verticalAlign: "middle", marginRight: 8 }} />
             Loop-verified
           </span>
@@ -41,7 +50,7 @@ export default function HealthCard() {
         </p>
 
         <h3>History</h3>
-        <ul className="timeline">
+        <ul className="timeline no-hover">
           {unit.events.map((e) => (
             <li key={e.id}>
               <strong>{e.type}</strong>

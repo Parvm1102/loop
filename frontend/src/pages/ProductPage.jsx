@@ -10,11 +10,19 @@ export default function ProductPage() {
   const { reload } = useAuth();
   const nav = useNavigate();
   const [p, setP] = useState(null);
+  const [fitHint, setFitHint] = useState("");
   const { push } = useToast();
 
   const load = () => api.get(`/products/${id}`).then(setP);
   useEffect(() => {
     load();
+    // load fit-check hint
+    api
+      .get(`/products/${id}/fitcheck`)
+      .then((res) => {
+        if (res && res.hint) setFitHint(res.hint);
+      })
+      .catch(() => {});
   }, [id]);
 
   const buy = async (listingId) => {
@@ -65,6 +73,18 @@ export default function ProductPage() {
           <span className="badge">{p.category}</span>
           <h2>{p.title}</h2>
           <p className="muted">{p.description}</p>
+          {fitHint && (
+            <div
+              style={{
+                marginTop: 8,
+                background: "#f3f4f6",
+                padding: 8,
+                borderRadius: 6,
+              }}
+            >
+              <strong>Fit hint:</strong> {fitHint}
+            </div>
+          )}
         </div>
       </div>
 
@@ -82,14 +102,27 @@ export default function ProductPage() {
       </div>
 
       <h3 style={{ marginTop: 28 }}>
-        Pre-loved <span className="muted">(graded &amp; verified by Loop)</span>
+        Pre-loved{" "}
+        <span className="muted">
+          (graded &amp; verified by{" "}
+          <img
+            src="/logo.png"
+            alt="Loop"
+            style={{
+              height: 14,
+              verticalAlign: "middle",
+              margin: "0 6px",
+            }}
+          />
+          Loop)
+        </span>
       </h3>
       {preLoved.length === 0 && (
         <div className="muted">No pre-loved offers right now.</div>
       )}
       <div className="grid">
         {preLoved.map((l) => (
-          <div className="card" key={l.id}>
+          <div className="card no-hover" key={l.id}>
             <div>
               <span className={`badge grade-${l.grade}`}>
                 Grade {l.grade ?? "?"}

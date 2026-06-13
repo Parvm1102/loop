@@ -24,6 +24,18 @@ export default function Resell() {
     load();
   }, []);
 
+  // Helper to fetch the unit healthcard (events) for a listing
+  const fetchPayoutForListing = async (unitId) => {
+    try {
+      const u = await api.get(`/units/${unitId}/healthcard`);
+      // find the most recent PAYOUT_RELEASED event
+      const payout = (u.events || []).find((e) => e.type === "PAYOUT_RELEASED");
+      return payout;
+    } catch (e) {
+      return null;
+    }
+  };
+
   const startResell = (orderId) => {
     setSelling(orderId);
     setPhotos([]);
@@ -49,6 +61,31 @@ export default function Resell() {
       setBusy(false);
     }
   };
+
+  function PayoutCell({ unitId }) {
+    const [payout, setPayout] = useState(null);
+    useEffect(() => {
+      let mounted = true;
+      api
+        .get(`/units/${unitId}/healthcard`)
+        .then((u) => {
+          if (!mounted) return;
+          const p = (u.events || []).find((e) => e.type === "PAYOUT_RELEASED");
+          setPayout(p || null);
+        })
+        .catch(() => {});
+      return () => (mounted = false);
+    }, [unitId]);
+    if (!payout) return null;
+    return (
+      <div>
+        <div style={{ fontSize: 12 }}>Payout: ₹{payout.payload?.amount}</div>
+        <div style={{ fontSize: 11 }} className="muted">
+          Fee: ₹{payout.payload?.fee}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="page">
@@ -134,6 +171,13 @@ export default function Resell() {
               </td>
               <td>
                 <span className="badge">{l.state}</span>
+                {/* Payout info (if any) */}
+                {l.unit_id && (
+                  <div className="muted" style={{ marginTop: 6 }}>
+                    {/* show most recent payout if available (lazy fetch) */}
+                    <PayoutCell unitId={l.unit_id} />
+                  </div>
+                )}
               </td>
             </tr>
           ))}

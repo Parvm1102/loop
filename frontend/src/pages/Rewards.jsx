@@ -49,7 +49,7 @@ export default function Rewards() {
           <div className="line short skeleton" />
         </div>
       ) : (
-        <div className="card">
+        <div className="card no-hover">
           <h3>
             Your Balance: {balance} <GiSeedling style={{ marginLeft: 8 }} />
           </h3>
@@ -61,7 +61,7 @@ export default function Rewards() {
       <h3>Rewards Store</h3>
       <div className="grid">
         {rewards.map((r) => (
-          <div key={r.id} className="card">
+          <div key={r.id} className="card no-hover">
             <div style={{ fontSize: 28, color: "var(--accent2)" }}>
               <FaGift />
             </div>

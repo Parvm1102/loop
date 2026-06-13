@@ -42,7 +42,18 @@ export default function PreLoved() {
 
   return (
     <div className="page">
-      <h2>Pre-Loved Shop</h2>
+      <h2>
+        <img
+          src="/logo.png"
+          alt="Loop"
+          style={{
+            height: 18,
+            marginRight: 8,
+            verticalAlign: "middle",
+          }}
+        />
+        Pre-Loved Shop
+      </h2>
       {/* toasts handled globally */}
       <div className="grid">
         {loading
@@ -56,7 +67,7 @@ export default function PreLoved() {
           : listings.map((l) => (
               <Link
                 key={l.id}
-                className="card"
+                className="card no-hover"
                 to={`/p/${l.product.id}`}
                 style={{ color: "inherit", textDecoration: "none" }}
               >

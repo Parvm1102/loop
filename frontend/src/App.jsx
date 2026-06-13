@@ -1,4 +1,4 @@
-import { Navigate, NavLink, Route, Routes } from "react-router-dom";
+import { Navigate, NavLink, Route, Routes, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "./auth";
 import { GiSeedling } from "react-icons/gi";
 import Shop from "./pages/Shop";
@@ -23,26 +23,79 @@ function Guard({ need, children }) {
 
 export default function App() {
   const { user, logout } = useAuth();
+  const nav = useNavigate();
+  const loc = useLocation();
   return (
     <>
       <nav className="nav">
-        <NavLink to="/" className="brand">
-          Loop
-        </NavLink>
-        <NavLink to="/">Shop</NavLink>
-        {user && <NavLink to="/orders">Orders</NavLink>}
-        {user && <NavLink to="/resell">Resell</NavLink>}
-        {user?.role === "SELLER" && <NavLink to="/seller">Seller</NavLink>}
-        {user?.role === "FACILITY" && (
-          <NavLink to="/facility">Facility</NavLink>
+        <div className="brand">
+          <img
+            src="/logo.png"
+            alt="Loop"
+            style={{ height: 28, marginRight: 8 }}
+          />
+          <span
+            style={{
+              fontWeight: 800,
+              fontSize: 18,
+              color: "var(--accent)",
+            }}
+          >
+            Loop
+          </span>
+        </div>
+        <button
+          className={loc.pathname === "/" ? "active" : ""}
+          onClick={() => nav("/")}
+        >
+          Shop
+        </button>
+        {user && (
+          <button
+            className={
+              loc.pathname.startsWith("/orders") ? "active" : ""
+            }
+            onClick={() => nav("/orders")}
+          >
+            Orders
+          </button>
         )}
-        <NavLink to="/preloved">Pre-Loved</NavLink>
+        {user && (
+          <button
+            className={loc.pathname.startsWith("/resell") ? "active" : ""}
+            onClick={() => nav("/resell")}
+          >
+            Resell
+          </button>
+        )}
+        {user?.role === "SELLER" && (
+          <button
+            className={loc.pathname.startsWith("/seller") ? "active" : ""}
+            onClick={() => nav("/seller")}
+          >
+            Seller
+          </button>
+        )}
+        {user?.role === "FACILITY" && (
+          <button
+            className={loc.pathname.startsWith("/facility") ? "active" : ""}
+            onClick={() => nav("/facility")}
+          >
+            Facility
+          </button>
+        )}
+        <button
+          className={loc.pathname.startsWith("/preloved") ? "active" : ""}
+          onClick={() => nav("/preloved")}
+        >
+          Pre-Loved
+        </button>
         <span className="spacer" />
         {user ? (
           <>
-            <span className="muted">
+            <button className="muted nav-user" onClick={() => window.location.assign('/profile')}>
               {user.username} · {user.role}
-            </span>
+            </button>
             <NavLink to="/rewards" className="muted">
               <GiSeedling style={{ marginRight: 6 }} />{" "}
               {user.green_credits?.balance ?? 0}
@@ -52,7 +105,7 @@ export default function App() {
             </button>
           </>
         ) : (
-          <NavLink to="/login">Login</NavLink>
+          <button onClick={() => nav("/login")}>Login</button>
         )}
       </nav>
       <Routes>

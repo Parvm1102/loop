@@ -7,7 +7,8 @@ from rest_framework.response import Response
 from .models import ItemUnit, Product
 from .serializers import ItemUnitSerializer, ProductSerializer
 from marketplace.serializers import ListingSerializer
-from marketplace.models import Listing
+from marketplace.models import Listing, ListingSources
+from services import ai
 
 
 @api_view(["GET"])
@@ -54,7 +55,7 @@ def unit_health_card(request, pk):
 @permission_classes([AllowAny])
 def preloved_list(request):
     """Return active pre-loved listings (source != NEW)."""
-    qs = Listing.objects.filter(state="ACTIVE").exclude(source=Listing.Sources.NEW if hasattr(Listing, 'Sources') else "NEW").select_related('unit__product').order_by('-created_at')
+    qs = Listing.objects.filter(state="ACTIVE").exclude(source=ListingSources.NEW).select_related('unit__product').order_by('-created_at')
     # Allow filters
     category = request.query_params.get('category')
     grade = request.query_params.get('grade')

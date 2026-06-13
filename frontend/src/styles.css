@@ -41,10 +41,21 @@ a {
   border-bottom: 1px solid #2c3442;
 }
 .nav .brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-weight: 800;
   font-size: 18px;
   color: var(--accent);
 }
+
+/* Ensure brand text itself is vertically centered with the logo */
+.nav .brand span {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+}
+
 .nav .spacer {
   flex: 1;
 }
@@ -193,7 +204,29 @@ button:disabled {
   color: #052e16;
 }
 
-/* Utility to disable hover/active visuals for non-clickable cards (toasts etc) */
+/* Animation utility applied by adding the class 'anim-root' to the root element. */
+.anim-root button,
+.anim-root a,
+.anim-root .card {
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease,
+    opacity 160ms ease;
+}
+.anim-root button:hover,
+.anim-root a:hover,
+.anim-root .card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.6);
+}
+.anim-root button:active,
+.anim-root a:active,
+.anim-root .card:active {
+  transform: translateY(0);
+  opacity: 0.92;
+}
+
+/* Disable hover only for elements marked with .no-hover (cards, toasts etc) */
 .anim-root .no-hover:hover {
   transform: none !important;
   box-shadow: none !important;
@@ -201,6 +234,52 @@ button:disabled {
 .anim-root .no-hover:active {
   transform: none !important;
   opacity: 1 !important;
+}
+
+/* NOTE: allow buttons INSIDE .no-hover elements to keep their hover/active visuals */
+/* (removed the previous .no-hover button override so inner buttons still get animated feedback) */
+
+/* Navbar brand: align logo and text center vertically */
+.nav .brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Ensure brand text itself is vertically centered with the logo */
+.nav .brand span {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+}
+
+/* Navbar button/link hover visuals */
+.nav button,
+.nav a {
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 6px 8px;
+}
+.nav button:hover,
+.nav a:hover {
+  color: var(--accent);
+  transform: translateY(-3px);
+}
+
+/* Buttons inside no-hover cards should still show hover/active feedback */
+.card.no-hover .card-actions .button:hover,
+.card.no-hover .card-actions button:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.45);
+  filter: brightness(1.04);
+}
+.card.no-hover .card-actions .button:active,
+.card.no-hover .card-actions button:active {
+  transform: translateY(0);
+  opacity: 0.95;
 }
 
 input,
@@ -294,28 +373,6 @@ th {
   height: 8px;
   border-radius: 50%;
   background: var(--accent2);
-}
-
-/* Animation utility applied by adding the class 'anim-root' to the root element. */
-.anim-root button,
-.anim-root a,
-.anim-root .card {
-  transition:
-    transform 120ms ease,
-    box-shadow 120ms ease,
-    opacity 160ms ease;
-}
-.anim-root button:hover,
-.anim-root a:hover,
-.anim-root .card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.6);
-}
-.anim-root button:active,
-.anim-root a:active,
-.anim-root .card:active {
-  transform: translateY(0);
-  opacity: 0.92;
 }
 
 /* Skeleton loader */

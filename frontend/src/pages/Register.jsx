@@ -21,7 +21,7 @@ export default function Register() {
   };
 
   return (
-    <form className="form card" onSubmit={submit}>
+    <form className="form card no-hover" onSubmit={submit}>
       <h2>Register</h2>
       <label>Username</label>
       <input value={username} onChange={(e) => setU(e.target.value)} autoFocus />

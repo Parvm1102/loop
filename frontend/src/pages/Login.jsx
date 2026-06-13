@@ -20,7 +20,7 @@ export default function Login() {
   };
 
   return (
-    <form className="form card" onSubmit={submit}>
+    <form className="form card no-hover" onSubmit={submit}>
       <h2>Login</h2>
       <label>Username</label>
       <input value={username} onChange={(e) => setU(e.target.value)} autoFocus />

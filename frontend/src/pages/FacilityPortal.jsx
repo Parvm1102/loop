@@ -83,6 +83,29 @@ export default function FacilityPortal() {
     }
   };
 
+  // New: relist / dispose handlers used by the watchlist actions
+  const relist = async (unitId) => {
+    setMsg("");
+    try {
+      await api.post(`/facility/units/${unitId}/relist`);
+      load();
+      push("Relisted", "success");
+    } catch (e) {
+      push(e.message || "Relist failed", "error");
+    }
+  };
+
+  const dispose = async (unitId, target) => {
+    setMsg("");
+    try {
+      await api.post(`/facility/units/${unitId}/dispose`, { target });
+      load();
+      push(target === "DONATED" ? "Donated" : "Liquidated", "success");
+    } catch (e) {
+      push(e.message || "Dispose failed", "error");
+    }
+  };
+
   const simulateDay = async () => {
     setMsg("");
     const s = await api.post("/facility/simulate-day");
