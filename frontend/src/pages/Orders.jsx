@@ -4,6 +4,7 @@ import { api } from "../api";
 import { useAuth } from "../auth";
 import PhotoPicker from "../components/PhotoPicker";
 import { useToast } from "../components/Toast";
+import { Package, Gift, RotateCcw } from "../components/icons";
 
 const REASONS = [
   ["DIDNT_MATCH", "Didn't match description"],
@@ -37,7 +38,7 @@ export default function Orders() {
   // poll briefly until it appears (bounded so we stop if no offer is made).
   useEffect(() => {
     const awaiting = orders.some(
-      (o) => o.state === "RETURN_REQUESTED" && !o.prevention_offer
+      (o) => o.state === "RETURN_REQUESTED" && !o.prevention_offer,
     );
     if (!awaiting || polls >= 8) return;
     const t = setTimeout(() => {
@@ -98,7 +99,7 @@ export default function Orders() {
       if (reload) reload();
       push(
         `Kept! ₹${r.cash_refund} refunded + ${r.green_credits} green credits added`,
-        "success"
+        "success",
       );
     } catch (e) {
       push(e.message || "Could not accept offer", "error");
@@ -117,146 +118,159 @@ export default function Orders() {
 
   return (
     <div className="page">
-      <h2>My orders</h2>
+      <h2 style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <Package size={22} /> My orders
+      </h2>
       {/* toasts handled globally */}
-      <table>
-        <thead>
-          <tr>
-            <th>Item</th>
-            <th>Price</th>
-            <th>State</th>
-            <th />
-          </tr>
-        </thead>
-        <tbody>
-          {orders.map((o) => (
-            <tr key={o.id}>
-              <td>{o.listing.product.title}</td>
-              <td>₹{o.listing.price}</td>
-              <td>
-                <span className="badge">{o.state}</span>
-              </td>
-              <td>
-                {o.state === "PLACED" && (
-                  <button className="secondary" onClick={() => advance(o.id)}>
-                    Mark delivered (demo)
-                  </button>
-                )}
-                {o.prevention_offer && o.state === "RETURN_REQUESTED" && (
-                  <div
-                    className="card"
-                    style={{ padding: 12, borderColor: "var(--accent2)" }}
-                  >
-                    <strong>Keep it &amp; skip the return?</strong>
-                    <p className="muted" style={{ margin: "6px 0" }}>
-                      {o.prevention_offer.message}
-                    </p>
-                    <div className="row" style={{ marginTop: 6 }}>
-                      <button onClick={() => acceptOffer(o.prevention_offer.id)}>
-                        Keep &amp; get ₹{o.prevention_offer.cash_refund} +{" "}
-                        {o.prevention_offer.green_credits} credits
-                      </button>
-                      <button
-                        className="secondary"
-                        onClick={() => declineOffer(o.prevention_offer.id)}
-                      >
-                        No, return it
-                      </button>
-                    </div>
-                  </div>
-                )}
-                {o.state === "DELIVERED" &&
-                  returning !== o.id &&
-                  o.return_eligible && (
-                    <button
-                      className="secondary"
-                      onClick={() => startReturn(o.id)}
-                    >
-                      Return
+      <div className="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Price</th>
+              <th>State</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {orders.map((o) => (
+              <tr key={o.id}>
+                <td>{o.listing.product.title}</td>
+                <td>₹{o.listing.price}</td>
+                <td>
+                  <span className="badge">{o.state}</span>
+                </td>
+                <td>
+                  {o.state === "PLACED" && (
+                    <button className="secondary" onClick={() => advance(o.id)}>
+                      Mark delivered (demo)
                     </button>
                   )}
-                {o.state === "DELIVERED" &&
-                  returning !== o.id &&
-                  !o.return_eligible && (
-                    <div
-                      className="row"
-                      style={{ gap: 8, alignItems: "center", margin: 0 }}
-                    >
-                      <span className="muted">Return window closed</span>
-                      <button
-                        className="secondary"
-                        onClick={() => navigate("/resell")}
+                  {o.prevention_offer && o.state === "RETURN_REQUESTED" && (
+                    <div className="disposition" style={{ marginTop: 0 }}>
+                      <strong
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 6,
+                        }}
                       >
-                        Resell instead
-                      </button>
+                        <Gift size={16} /> Keep it &amp; skip the return?
+                      </strong>
+                      <p className="muted" style={{ margin: "6px 0" }}>
+                        {o.prevention_offer.message}
+                      </p>
+                      <div className="row" style={{ marginTop: 6 }}>
+                        <button
+                          onClick={() => acceptOffer(o.prevention_offer.id)}
+                        >
+                          Keep &amp; get ₹{o.prevention_offer.cash_refund} +{" "}
+                          {o.prevention_offer.green_credits} credits
+                        </button>
+                        <button
+                          className="secondary"
+                          onClick={() => declineOffer(o.prevention_offer.id)}
+                        >
+                          No, return it
+                        </button>
+                      </div>
                     </div>
                   )}
-                {returning === o.id && (
-                  <div className="card" style={{ padding: 12 }}>
-                    <div className="row">
-                      <select
-                        value={reason}
-                        onChange={(e) => setReason(e.target.value)}
-                        style={{ maxWidth: 220 }}
-                      >
-                        {REASONS.map(([v, label]) => (
-                          <option key={v} value={v}>
-                            {label}
-                          </option>
-                        ))}
-                      </select>
-                      <label className="row" style={{ margin: 0 }}>
-                        <input
-                          type="checkbox"
-                          style={{ width: "auto" }}
-                          checked={untouchedClaim}
-                          onChange={(e) => setUntouchedClaim(e.target.checked)}
-                        />
-                        unopened
-                      </label>
-                    </div>
-                    <textarea
-                      placeholder="Add a comment (optional) — describe the issue"
-                      value={comment}
-                      onChange={(e) => setComment(e.target.value)}
-                      rows={2}
-                      style={{ marginTop: 8, width: "100%" }}
-                    />
-                    <div style={{ marginTop: 10 }}>
-                      <PhotoPicker
-                        files={photos}
-                        onChange={setPhotos}
-                        onMetadata={setPhotoMetas}
-                      />
-                    </div>
-                    <div className="row" style={{ marginTop: 10 }}>
-                      <button
-                        onClick={() => submitReturn(o.id)}
-                        disabled={busy}
-                      >
-                        {busy ? "Uploading…" : "Confirm return"}
-                      </button>
+                  {o.state === "DELIVERED" &&
+                    returning !== o.id &&
+                    o.return_eligible && (
                       <button
                         className="secondary"
-                        onClick={() => setReturning(null)}
+                        onClick={() => startReturn(o.id)}
                       >
-                        Cancel
+                        <RotateCcw size={15} /> Return
                       </button>
+                    )}
+                  {o.state === "DELIVERED" &&
+                    returning !== o.id &&
+                    !o.return_eligible && (
+                      <div
+                        className="row"
+                        style={{ gap: 8, alignItems: "center", margin: 0 }}
+                      >
+                        <span className="muted">Return window closed</span>
+                        <button
+                          className="secondary"
+                          onClick={() => navigate("/resell")}
+                        >
+                          Resell instead
+                        </button>
+                      </div>
+                    )}
+                  {returning === o.id && (
+                    <div className="card" style={{ padding: 12 }}>
+                      <div className="row">
+                        <select
+                          value={reason}
+                          onChange={(e) => setReason(e.target.value)}
+                          style={{ maxWidth: 220 }}
+                        >
+                          {REASONS.map(([v, label]) => (
+                            <option key={v} value={v}>
+                              {label}
+                            </option>
+                          ))}
+                        </select>
+                        <label className="row" style={{ margin: 0 }}>
+                          <input
+                            type="checkbox"
+                            style={{ width: "auto" }}
+                            checked={untouchedClaim}
+                            onChange={(e) =>
+                              setUntouchedClaim(e.target.checked)
+                            }
+                          />
+                          unopened
+                        </label>
+                      </div>
+                      <textarea
+                        placeholder="Add a comment (optional) — describe the issue"
+                        value={comment}
+                        onChange={(e) => setComment(e.target.value)}
+                        rows={2}
+                        style={{ marginTop: 8, width: "100%" }}
+                      />
+                      <div style={{ marginTop: 10 }}>
+                        <PhotoPicker
+                          files={photos}
+                          onChange={setPhotos}
+                          onMetadata={setPhotoMetas}
+                        />
+                      </div>
+                      <div className="row" style={{ marginTop: 10 }}>
+                        <button
+                          onClick={() => submitReturn(o.id)}
+                          disabled={busy}
+                        >
+                          {busy ? "Uploading…" : "Confirm return"}
+                        </button>
+                        <button
+                          className="secondary"
+                          onClick={() => setReturning(null)}
+                        >
+                          Cancel
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                )}
-              </td>
-            </tr>
-          ))}
-          {orders.length === 0 && (
-            <tr>
-              <td colSpan={4} className="muted">
-                No orders yet.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+                  )}
+                </td>
+              </tr>
+            ))}
+            {orders.length === 0 && (
+              <tr>
+                <td colSpan={4} className="muted">
+                  No orders yet.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

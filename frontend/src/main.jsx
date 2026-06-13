@@ -8,6 +8,11 @@ import "./styles.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
+    <div className="aurora" aria-hidden="true">
+      <b className="o" />
+      <b className="n" />
+      <b className="t" />
+    </div>
     <div className="anim-root">
       <BrowserRouter>
         <AuthProvider>

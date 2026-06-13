@@ -15,6 +15,7 @@ _DEFECTS = {
     "electronics": ["minor surface scratch", "scuff near port", "light wear on edges"],
     "apparel": ["slight fading", "loose thread", "faint mark"],
     "footwear": ["sole wear", "crease on toe", "minor scuff"],
+    "general": ["light surface scratch", "minor dent", "faint water spot"],
     "default": ["light cosmetic wear", "minor handling marks"],
 }
 

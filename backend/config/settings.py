@@ -182,6 +182,7 @@ STORAGE_DAILY_RATE_BY_CATEGORY = {      # override per category
     "electronics": 8,
     "apparel": 3,
     "footwear": 4,
+    "general": 5,
 }
 PRICE_STEPDOWN_EVERY_DAYS = 7
 PRICE_STEPDOWN_PCT = 10                 # −10% per step, floor band_lo
@@ -192,6 +193,7 @@ RETURN_WINDOW_DAYS_BY_CATEGORY = {      # override per category
     "electronics": 7,
     "apparel": 14,
     "footwear": 14,
+    "general": 7,
 }
 
 # --- Celery (async return grading workers) ---

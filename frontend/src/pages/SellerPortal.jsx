@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "../api";
 import PhotoPicker from "../components/PhotoPicker";
 import { useToast } from "../components/Toast";
+import { Store, Package, RotateCcw, Plus, X } from "../components/icons";
 
 const EMPTY_PRODUCT = {
   title: "",
@@ -100,7 +101,9 @@ export default function SellerPortal() {
 
   return (
     <div className="page">
-      <h2>Sell a new product</h2>
+      <h2 style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <Store size={22} /> Sell a new product
+      </h2>
       <form className="card" style={{ maxWidth: 720 }} onSubmit={addProduct}>
         <div className="row">
           <div style={{ flex: 2, minWidth: 220 }}>
@@ -123,6 +126,7 @@ export default function SellerPortal() {
               <option>electronics</option>
               <option>apparel</option>
               <option>footwear</option>
+              <option>general</option>
             </select>
           </div>
           <div style={{ maxWidth: 110 }}>
@@ -165,37 +169,37 @@ export default function SellerPortal() {
                   width: 80,
                   height: 80,
                   objectFit: "cover",
-                  borderRadius: 8,
+                  borderRadius: 12,
                 }}
               />
               <button
                 type="button"
                 className="danger"
+                aria-label="remove image"
                 onClick={() => setProductImage(null)}
                 style={{
                   position: "absolute",
                   top: -6,
                   right: -6,
-                  width: 20,
-                  height: 20,
+                  width: 22,
+                  height: 22,
+                  minHeight: 0,
                   padding: 0,
                   borderRadius: "50%",
-                  fontSize: 11,
-                  lineHeight: "20px",
                 }}
               >
-                Remove
+                <X size={13} />
               </button>
             </div>
           ) : (
             <button
               type="button"
-              className="secondary"
-              style={{ width: 80, height: 80, fontSize: 22 }}
+              className="photo-add"
+              style={{ width: 80, height: 80 }}
               onClick={() => imgInputRef.current?.click()}
               title="Add image"
             >
-              Add image
+              <Plus size={22} />
             </button>
           )}
           <input
@@ -217,26 +221,33 @@ export default function SellerPortal() {
         </button>
       </form>
 
-      <h3 style={{ marginTop: 28 }}>My catalog</h3>
-      <div className="grid">
+      <h3
+        style={{ marginTop: 28, display: "flex", alignItems: "center", gap: 8 }}
+      >
+        <Package size={18} /> My catalog
+      </h3>
+      <div className="grid stagger">
         {myProducts.map((p) => (
-          <div className="card" key={p.id}>
-            {p.image_url && (
+          <div className="media-card sheen" key={p.id}>
+            {p.image_url ? (
               <img
+                className="media-img"
                 src={p.image_url}
                 alt={p.title}
-                style={{
-                  width: "100%",
-                  height: 110,
-                  objectFit: "cover",
-                  borderRadius: 8,
-                  marginBottom: 8,
-                }}
+                loading="lazy"
               />
+            ) : (
+              <div className="media-fallback">
+                <Package size={48} />
+              </div>
             )}
-            <span className="badge">{p.category}</span>
-            <h3>{p.title}</h3>
-            <span className="price">₹{p.mrp}</span>
+            <div className="corner left">
+              <span className="badge float">{p.category}</span>
+            </div>
+            <div className="panel">
+              <h3>{p.title}</h3>
+              <span className="price">₹{p.mrp}</span>
+            </div>
           </div>
         ))}
         {myProducts.length === 0 && (
@@ -245,7 +256,11 @@ export default function SellerPortal() {
       </div>
 
       <div className="row" style={{ marginTop: 32 }}>
-        <h2 style={{ margin: 0 }}>Returns inbox</h2>
+        <h2
+          style={{ margin: 0, display: "flex", alignItems: "center", gap: 8 }}
+        >
+          <RotateCcw size={20} /> Returns inbox
+        </h2>
         <button className="right" onClick={bulk}>
           Run rules on all
         </button>
@@ -255,104 +270,108 @@ export default function SellerPortal() {
         you.
       </p>
 
-      <table>
-        <thead>
-          <tr>
-            <th>Item</th>
-            <th>Grade</th>
-            <th>Est. value</th>
-            <th>Recovery</th>
-            <th>Suggested</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {inbox.map((u) => (
-            <tr key={u.id}>
-              <td>
-                {u.product.title}
-                {u.untouched && (
-                  <span className="badge" style={{ marginLeft: 6 }}>
-                    UNOPENED
-                  </span>
-                )}
-              </td>
-              <td>
-                <span className={`badge grade-${u.grade}`}>{u.grade}</span>
-              </td>
-              <td>₹{u.est_value}</td>
-              <td className="muted">
-                {u.est_value && u.product.mrp
-                  ? Math.round((u.est_value / u.product.mrp) * 100)
-                  : "?"}
-                %
-              </td>
-              <td>
-                {u.suggested_action ? (
-                  <span className="badge src">{u.suggested_action}</span>
-                ) : (
-                  <span className="muted">—</span>
-                )}
-              </td>
-              <td className="row">
-                <button
-                  className="secondary"
-                  onClick={() => applyOne(u.id, "AUTO_RELIST")}
-                >
-                  Relist
-                </button>
-                <button
-                  className="secondary"
-                  onClick={() => applyOne(u.id, "DONATE")}
-                >
-                  Donate
-                </button>
-                <button
-                  className="danger"
-                  onClick={() => applyOne(u.id, "LIQUIDATE")}
-                >
-                  Liquidate
-                </button>
-              </td>
-            </tr>
-          ))}
-          {inbox.length === 0 && (
+      <div className="table-wrap">
+        <table>
+          <thead>
             <tr>
-              <td colSpan={6} className="muted">
-                Inbox zero — rules are doing their job.
-              </td>
+              <th>Item</th>
+              <th>Grade</th>
+              <th>Est. value</th>
+              <th>Recovery</th>
+              <th>Suggested</th>
+              <th>Actions</th>
             </tr>
-          )}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {inbox.map((u) => (
+              <tr key={u.id}>
+                <td>
+                  {u.product.title}
+                  {u.untouched && (
+                    <span className="badge" style={{ marginLeft: 6 }}>
+                      UNOPENED
+                    </span>
+                  )}
+                </td>
+                <td>
+                  <span className={`badge grade-${u.grade}`}>{u.grade}</span>
+                </td>
+                <td>₹{u.est_value}</td>
+                <td className="muted">
+                  {u.est_value && u.product.mrp
+                    ? Math.round((u.est_value / u.product.mrp) * 100)
+                    : "?"}
+                  %
+                </td>
+                <td>
+                  {u.suggested_action ? (
+                    <span className="badge src">{u.suggested_action}</span>
+                  ) : (
+                    <span className="muted">—</span>
+                  )}
+                </td>
+                <td className="row">
+                  <button
+                    className="secondary"
+                    onClick={() => applyOne(u.id, "AUTO_RELIST")}
+                  >
+                    Relist
+                  </button>
+                  <button
+                    className="secondary"
+                    onClick={() => applyOne(u.id, "DONATE")}
+                  >
+                    Donate
+                  </button>
+                  <button
+                    className="danger"
+                    onClick={() => applyOne(u.id, "LIQUIDATE")}
+                  >
+                    Liquidate
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {inbox.length === 0 && (
+              <tr>
+                <td colSpan={6} className="muted">
+                  Inbox zero — rules are doing their job.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
 
       <h3 style={{ marginTop: 32 }}>Standing rules</h3>
-      <table>
-        <thead>
-          <tr>
-            <th>Rule</th>
-            <th>Action</th>
-            <th>Active</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rules.map((r) => (
-            <tr key={r.id}>
-              <td>
-                Grade ≥ {r.min_grade} AND recovery ≥ {r.min_recovery_pct}%
-              </td>
-              <td>
-                <span className="badge src">{r.action}</span>
-              </td>
-              <td>
-                <button className="secondary" onClick={() => toggleRule(r)}>
-                  {r.active ? "Disable" : "Enable"}
-                </button>
-              </td>
+      <div className="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Rule</th>
+              <th>Action</th>
+              <th>Active</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {rules.map((r) => (
+              <tr key={r.id}>
+                <td>
+                  Grade ≥ {r.min_grade} AND recovery ≥ {r.min_recovery_pct}%
+                </td>
+                <td>
+                  <span className="badge src">{r.action}</span>
+                </td>
+                <td>
+                  <button className="secondary" onClick={() => toggleRule(r)}>
+                    {r.active ? "Disable" : "Enable"}
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       <form
         className="card"

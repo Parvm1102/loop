@@ -42,13 +42,34 @@ def product_detail(request, pk):
 
 @api_view(["GET"])
 @permission_classes([AllowAny])
+def product_related(request, pk):
+    """Other products in the same category — powers the "More in <category>"
+    carousel on the product page. Excludes the current product."""
+    try:
+        product = Product.objects.get(pk=pk)
+    except Product.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
+    qs = (
+        Product.objects.filter(category=product.category)
+        .exclude(pk=product.pk)
+        .order_by("-created_at")
+    )
+    return Response(ProductSerializer(qs[:12], many=True).data)
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
 def unit_health_card(request, pk):
     """Public Health Card: unit lifecycle + grade + events."""
     try:
         unit = ItemUnit.objects.select_related("product").get(pk=pk)
     except ItemUnit.DoesNotExist:
         return Response(status=status.HTTP_404_NOT_FOUND)
-    return Response(ItemUnitSerializer(unit).data)
+    # Buyers must not see the internal AI disposition recommendation — that's
+    # a facility-only signal. Opt out so the field is omitted entirely.
+    return Response(
+        ItemUnitSerializer(unit, context={"include_routing": False}).data
+    )
 
 
 @api_view(["GET"])

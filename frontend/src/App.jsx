@@ -1,6 +1,14 @@
-import { Navigate, NavLink, Route, Routes, useNavigate, useLocation } from "react-router-dom";
+import { useState } from "react";
+import {
+  Navigate,
+  Route,
+  Routes,
+  useNavigate,
+  useLocation,
+} from "react-router-dom";
 import { useAuth } from "./auth";
-import { GiSeedling } from "react-icons/gi";
+import { useCountUp, useScrolled } from "./lib/motion";
+import { Search, Sprout, LogOut, Menu, X, User } from "./components/icons";
 import Shop from "./pages/Shop";
 import ProductPage from "./pages/ProductPage";
 import Login from "./pages/Login";
@@ -21,93 +29,142 @@ function Guard({ need, children }) {
   return children;
 }
 
-export default function App() {
+function NavBar() {
   const { user, logout } = useAuth();
   const nav = useNavigate();
   const loc = useLocation();
+  const scrolled = useScrolled(12);
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+
+  const credits = useCountUp(user?.green_credits?.balance ?? 0);
+
+  const go = (to) => {
+    setOpen(false);
+    nav(to);
+  };
+
+  const tabs = [
+    { to: "/", label: "Shop", match: (p) => p === "/" },
+    {
+      to: "/preloved",
+      label: "Pre-Loved",
+      match: (p) => p.startsWith("/preloved"),
+    },
+  ];
+  if (user) {
+    tabs.splice(1, 0, {
+      to: "/orders",
+      label: "Orders",
+      match: (p) => p.startsWith("/orders"),
+    });
+    tabs.splice(2, 0, {
+      to: "/resell",
+      label: "Resell",
+      match: (p) => p.startsWith("/resell"),
+    });
+  }
+  if (user?.role === "SELLER")
+    tabs.push({
+      to: "/seller",
+      label: "Seller",
+      match: (p) => p.startsWith("/seller"),
+    });
+  if (user?.role === "FACILITY")
+    tabs.push({
+      to: "/facility",
+      label: "Facility",
+      match: (p) => p.startsWith("/facility"),
+    });
+
+  const submitSearch = (e) => {
+    e.preventDefault();
+    const term = q.trim();
+    nav(term ? `/?q=${encodeURIComponent(term)}` : "/");
+  };
+
+  return (
+    <nav className={`nav${scrolled ? " scrolled" : ""}`}>
+      <button
+        className="brand"
+        onClick={() => go("/")}
+        style={{
+          background: "transparent",
+          border: "none",
+          minHeight: 0,
+          padding: 0,
+        }}
+      >
+        <span className="logo-chip">
+          <img src="/logo.png" alt="Orbit" />
+        </span>
+        <span className="wordmark">Orbit</span>
+      </button>
+
+      <form className="nav-search" onSubmit={submitSearch}>
+        <Search size={18} style={{ color: "var(--text-muted)" }} />
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Search products…"
+          aria-label="Search products"
+        />
+        <button type="submit" aria-label="Search">
+          <Search size={16} />
+        </button>
+      </form>
+
+      <button
+        className="nav-toggle"
+        aria-label={open ? "Close menu" : "Open menu"}
+        onClick={() => setOpen((v) => !v)}
+      >
+        {open ? <X size={20} /> : <Menu size={20} />}
+      </button>
+
+      <div className={`tab-list${open ? " open" : ""}`}>
+        {tabs.map((t) => (
+          <button
+            key={t.to}
+            className={`tab${t.match(loc.pathname) ? " active" : ""}`}
+            onClick={() => go(t.to)}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      <span className="spacer" />
+
+      {user ? (
+        <>
+          <button
+            className="credits"
+            onClick={() => go("/rewards")}
+            title="Green Credits"
+          >
+            <Sprout size={16} />
+            {credits}
+          </button>
+          <button className="nav-user" onClick={() => go("/profile")}>
+            <User size={15} />
+            {user.username} · {user.role}
+          </button>
+          <button className="secondary" onClick={logout}>
+            <LogOut size={15} /> Logout
+          </button>
+        </>
+      ) : (
+        <button onClick={() => go("/login")}>Login</button>
+      )}
+    </nav>
+  );
+}
+
+export default function App() {
   return (
     <>
-      <nav className="nav">
-        <div className="brand">
-          <img
-            src="/logo.png"
-            alt="Loop"
-            style={{ height: 28, marginRight: 8 }}
-          />
-          <span
-            style={{
-              fontWeight: 800,
-              fontSize: 18,
-              color: "var(--accent)",
-            }}
-          >
-            Loop
-          </span>
-        </div>
-        <button
-          className={loc.pathname === "/" ? "active" : ""}
-          onClick={() => nav("/")}
-        >
-          Shop
-        </button>
-        {user && (
-          <button
-            className={
-              loc.pathname.startsWith("/orders") ? "active" : ""
-            }
-            onClick={() => nav("/orders")}
-          >
-            Orders
-          </button>
-        )}
-        {user && (
-          <button
-            className={loc.pathname.startsWith("/resell") ? "active" : ""}
-            onClick={() => nav("/resell")}
-          >
-            Resell
-          </button>
-        )}
-        {user?.role === "SELLER" && (
-          <button
-            className={loc.pathname.startsWith("/seller") ? "active" : ""}
-            onClick={() => nav("/seller")}
-          >
-            Seller
-          </button>
-        )}
-        {user?.role === "FACILITY" && (
-          <button
-            className={loc.pathname.startsWith("/facility") ? "active" : ""}
-            onClick={() => nav("/facility")}
-          >
-            Facility
-          </button>
-        )}
-        <button
-          className={loc.pathname.startsWith("/preloved") ? "active" : ""}
-          onClick={() => nav("/preloved")}
-        >
-          Pre-Loved
-        </button>
-        <span className="spacer" />
-        {user ? (
-          <>
-            <button className="muted nav-user" onClick={() => window.location.assign('/profile')}>
-              {user.username} · {user.role}
-            </button>
-            <NavLink to="/rewards" className="muted">
-              <GiSeedling style={{ marginRight: 6 }} />{" "}
-              {user.green_credits?.balance ?? 0}
-            </NavLink>
-            <button className="secondary" onClick={logout}>
-              Logout
-            </button>
-          </>
-        ) : (
-          <button onClick={() => nav("/login")}>Login</button>
-        )}
-      </nav>
+      <NavBar />
       <Routes>
         <Route path="/" element={<Shop />} />
         <Route path="/p/:id" element={<ProductPage />} />

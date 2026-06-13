@@ -15,6 +15,7 @@ class ProductSerializer(serializers.ModelSerializer):
         fields = [
             "id", "title", "description", "category", "mrp",
             "image_url", "thumbnail_url", "seller_name", "created_at",
+            "attributes",
         ]
 
     def get_image_url(self, obj):
@@ -59,6 +60,14 @@ class ItemUnitSerializer(serializers.ModelSerializer):
             "est_value", "arrived_at_facility", "storage_cost_accrued",
             "events", "created_at", "routing_recommendation",
         ]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # The AI disposition recommendation is facility-only. Drop the field
+        # entirely when the caller opts out — e.g. the public buyer-facing
+        # Health Card — so buyers never see internal routing info.
+        if self.context.get("include_routing") is False:
+            self.fields.pop("routing_recommendation", None)
 
     def get_routing_recommendation(self, obj):
         try:

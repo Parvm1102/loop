@@ -3,6 +3,7 @@ import { api } from "../api";
 import { useAuth } from "../auth";
 import PhotoPicker from "../components/PhotoPicker";
 import { useToast } from "../components/Toast";
+import { Recycle, Sparkles, Tag } from "../components/icons";
 
 export default function Resell() {
   const { reload } = useAuth();
@@ -89,107 +90,121 @@ export default function Resell() {
 
   return (
     <div className="page">
-      <h2>Resell</h2>
+      <h2 style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <Recycle size={22} /> Resell
+      </h2>
       <p className="muted">
-        One tap: Loop grades it, prices it inside a fair band, lists it, and a
+        One tap: Orbit grades it, prices it inside a fair band, lists it, and a
         courier picks it up. No strangers, no haggling.
       </p>
 
-      <h3>Eligible (delivered) orders</h3>
-      <table>
-        <thead>
-          <tr>
-            <th>Item</th>
-            <th>Paid</th>
-            <th />
-          </tr>
-        </thead>
-        <tbody>
-          {orders.map((o) => (
-            <tr key={o.id}>
-              <td>{o.listing.product.title}</td>
-              <td>₹{o.listing.price}</td>
-              <td>
-                {selling !== o.id ? (
-                  <button onClick={() => startResell(o.id)}>Resell this</button>
-                ) : (
-                  <div className="card" style={{ padding: 12 }}>
-                    <div className="muted" style={{ marginBottom: 8 }}>
-                      Add a few photos — AI grades from these.
-                    </div>
-                    <PhotoPicker files={photos} onChange={setPhotos} />
-                    <div className="row" style={{ marginTop: 10 }}>
-                      <button
-                        onClick={() => confirmResell(o.id)}
-                        disabled={busy}
-                      >
-                        {busy ? "Grading…" : "Grade & list it"}
-                      </button>
-                      <button
-                        className="secondary"
-                        onClick={() => setSelling(null)}
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </td>
-            </tr>
-          ))}
-          {orders.length === 0 && (
+      <h3 style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <Sparkles size={16} /> Eligible (delivered) orders
+      </h3>
+      <div className="table-wrap">
+        <table>
+          <thead>
             <tr>
-              <td colSpan={3} className="muted">
-                Nothing delivered yet.
-              </td>
+              <th>Item</th>
+              <th>Paid</th>
+              <th />
             </tr>
-          )}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {orders.map((o) => (
+              <tr key={o.id}>
+                <td>{o.listing.product.title}</td>
+                <td>₹{o.listing.price}</td>
+                <td>
+                  {selling !== o.id ? (
+                    <button onClick={() => startResell(o.id)}>
+                      <Recycle size={15} /> Resell this
+                    </button>
+                  ) : (
+                    <div className="card" style={{ padding: 12 }}>
+                      <div className="muted" style={{ marginBottom: 8 }}>
+                        Add a few photos — AI grades from these.
+                      </div>
+                      <PhotoPicker files={photos} onChange={setPhotos} />
+                      <div className="row" style={{ marginTop: 10 }}>
+                        <button
+                          onClick={() => confirmResell(o.id)}
+                          disabled={busy}
+                        >
+                          {busy ? "Grading…" : "Grade & list it"}
+                        </button>
+                        <button
+                          className="secondary"
+                          onClick={() => setSelling(null)}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </td>
+              </tr>
+            ))}
+            {orders.length === 0 && (
+              <tr>
+                <td colSpan={3} className="muted">
+                  Nothing delivered yet.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
 
-      <h3 style={{ marginTop: 28 }}>My resale listings</h3>
-      <table>
-        <thead>
-          <tr>
-            <th>Item</th>
-            <th>Grade</th>
-            <th>Price</th>
-            <th>Band</th>
-            <th>State</th>
-          </tr>
-        </thead>
-        <tbody>
-          {listings.map((l) => (
-            <tr key={l.id}>
-              <td>{l.product.title}</td>
-              <td>
-                <span className={`badge grade-${l.grade}`}>{l.grade}</span>
-              </td>
-              <td>₹{l.price}</td>
-              <td className="muted">
-                ₹{l.band_lo}–₹{l.band_hi}
-              </td>
-              <td>
-                <span className="badge">{l.state}</span>
-                {/* Payout info (if any) */}
-                {l.unit_id && (
-                  <div className="muted" style={{ marginTop: 6 }}>
-                    {/* show most recent payout if available (lazy fetch) */}
-                    <PayoutCell unitId={l.unit_id} />
-                  </div>
-                )}
-              </td>
-            </tr>
-          ))}
-          {listings.length === 0 && (
+      <h3
+        style={{ marginTop: 28, display: "flex", alignItems: "center", gap: 8 }}
+      >
+        <Tag size={16} /> My resale listings
+      </h3>
+      <div className="table-wrap">
+        <table>
+          <thead>
             <tr>
-              <td colSpan={5} className="muted">
-                No resale listings yet.
-              </td>
+              <th>Item</th>
+              <th>Grade</th>
+              <th>Price</th>
+              <th>Band</th>
+              <th>State</th>
             </tr>
-          )}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {listings.map((l) => (
+              <tr key={l.id}>
+                <td>{l.product.title}</td>
+                <td>
+                  <span className={`badge grade-${l.grade}`}>{l.grade}</span>
+                </td>
+                <td>₹{l.price}</td>
+                <td className="muted">
+                  ₹{l.band_lo}–₹{l.band_hi}
+                </td>
+                <td>
+                  <span className="badge">{l.state}</span>
+                  {/* Payout info (if any) */}
+                  {l.unit_id && (
+                    <div className="muted" style={{ marginTop: 6 }}>
+                      {/* show most recent payout if available (lazy fetch) */}
+                      <PayoutCell unitId={l.unit_id} />
+                    </div>
+                  )}
+                </td>
+              </tr>
+            ))}
+            {listings.length === 0 && (
+              <tr>
+                <td colSpan={5} className="muted">
+                  No resale listings yet.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

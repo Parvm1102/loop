@@ -1,11 +1,57 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { api } from "../api";
+import { Package, Search } from "../components/icons";
+
+function MediaCard({ p }) {
+  const src =
+    p.thumbnail_url ||
+    (p.listings &&
+      p.listings[0] &&
+      p.listings[0].photo_urls &&
+      p.listings[0].photo_urls[0]) ||
+    p.image_url;
+  return (
+    <Link className="media-card sheen" to={`/p/${p.id}`}>
+      {src ? (
+        <img
+          className="media-img"
+          src={src}
+          alt={p.title}
+          loading="lazy"
+          onError={(e) => {
+            e.currentTarget.style.display = "none";
+          }}
+        />
+      ) : (
+        <div className="media-fallback">
+          <Package size={48} />
+        </div>
+      )}
+      {p.category && (
+        <div className="corner left">
+          <span className="badge float">{p.category}</span>
+        </div>
+      )}
+      <div className="panel">
+        <h3>{p.title}</h3>
+        <div
+          className="row"
+          style={{ gap: 8, justifyContent: "space-between" }}
+        >
+          <span className="price">₹{p.mrp}</span>
+          <span className="muted">by {p.seller_name}</span>
+        </div>
+      </div>
+    </Link>
+  );
+}
 
 export default function Shop() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [q, setQ] = useState("");
+  const [params, setParams] = useSearchParams();
+  const [q, setQ] = useState(params.get("q") || "");
 
   useEffect(() => {
     setLoading(true);
@@ -18,71 +64,52 @@ export default function Shop() {
     return () => clearTimeout(t);
   }, [q]);
 
+  const onSearch = (val) => {
+    setQ(val);
+    setParams(val ? { q: val } : {}, { replace: true });
+  };
+
   return (
     <div className="page">
-      <div className="row" style={{ marginBottom: 16 }}>
+      <div className="row" style={{ marginBottom: 18 }}>
         <h2 style={{ margin: 0 }}>Shop</h2>
-        <input
-          style={{ maxWidth: 320 }}
-          className="right"
-          placeholder="Search products…"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-        />
+        <div className="nav-search right" style={{ maxWidth: 320 }}>
+          <Search size={18} style={{ color: "var(--text-muted)" }} />
+          <input
+            placeholder="Search products…"
+            value={q}
+            onChange={(e) => onSearch(e.target.value)}
+            style={{
+              background: "transparent",
+              border: "none",
+              boxShadow: "none",
+            }}
+          />
+        </div>
       </div>
-      <div className="grid">
-        {loading
-          ? Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="card skeleton">
-                <div className="thumb skeleton" />
-                <div className="line skeleton" />
-                <div className="line short skeleton" />
-              </div>
-            ))
-          : products.map((p) => (
-              <Link
-                className="card"
-                key={p.id}
-                to={`/p/${p.id}`}
-                style={{ color: "inherit", textDecoration: "none" }}
-              >
-                {(() => {
-                  const src =
-                    p.thumbnail_url ||
-                    (p.listings &&
-                      p.listings[0] &&
-                      p.listings[0].photo_urls &&
-                      p.listings[0].photo_urls[0]) ||
-                    p.image_url;
-                  return src ? (
-                    <img
-                      src={src}
-                      alt={p.title}
-                      style={{
-                        width: "100%",
-                        height: 110,
-                        objectFit: "cover",
-                        borderRadius: 8,
-                        marginBottom: 8,
-                      }}
-                      onError={(e) => {
-                        e.target.style.display = "none";
-                      }}
-                    />
-                  ) : null;
-                })()}
-                <span className="badge">{p.category}</span>
-                <h3>{p.title}</h3>
-                <div>
-                  <span className="price">₹{p.mrp}</span>
+
+      {!loading && products.length === 0 ? (
+        <div className="empty">
+          <span className="medallion">
+            <Package size={28} />
+          </span>
+          <div>No products found{q ? ` for “${q}”` : ""}.</div>
+        </div>
+      ) : (
+        <div className="grid stagger">
+          {loading
+            ? Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="media-card skel">
+                  <div className="media-img skeleton" />
+                  <div className="panel">
+                    <div className="line skeleton" />
+                    <div className="line short skeleton" />
+                  </div>
                 </div>
-                <div className="muted">by {p.seller_name}</div>
-              </Link>
-            ))}
-        {products.length === 0 && (
-          <div className="muted">No products found.</div>
-        )}
-      </div>
+              ))
+            : products.map((p) => <MediaCard key={p.id} p={p} />)}
+        </div>
+      )}
     </div>
   );
 }

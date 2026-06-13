@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
 import { useToast } from "../components/Toast";
+import { Warehouse, RotateCcw, Sparkles, Activity } from "../components/icons";
 
 export default function FacilityPortal() {
   const [incoming, setIncoming] = useState([]);
@@ -119,19 +120,33 @@ export default function FacilityPortal() {
   return (
     <div className="page">
       <div className="row">
-        <h2 style={{ margin: 0 }}>Facility</h2>
+        <h2
+          style={{ margin: 0, display: "flex", alignItems: "center", gap: 8 }}
+        >
+          <Warehouse size={22} /> Facility
+        </h2>
         <button className="right" onClick={simulateDay}>
           Simulate one day
         </button>
       </div>
       {/* toasts handled globally */}
 
-      <h3>Incoming returns</h3>
+      <h3 style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <RotateCcw size={18} /> Incoming returns
+      </h3>
       {receivedRecommendation && (
-        <div className="card" style={{ marginBottom: 12 }}>
+        <div className="disposition" style={{ marginTop: 0, marginBottom: 12 }}>
           <div className="row" style={{ alignItems: "center", gap: 8 }}>
-            <h4 style={{ margin: 0 }}>
-              AI Recommendation: {receivedRecommendation.routing.recommendation}
+            <h4
+              style={{
+                margin: 0,
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <Sparkles size={16} /> AI Recommendation:{" "}
+              {receivedRecommendation.routing.recommendation}
             </h4>
             {receivedRecommendation.routing.decided_by && (
               <span className="badge src">
@@ -207,106 +222,112 @@ export default function FacilityPortal() {
         </div>
       )}
 
-      <table>
-        <thead>
-          <tr>
-            <th>Item</th>
-            <th>Claimed</th>
-            <th>Receive as…</th>
-          </tr>
-        </thead>
-        <tbody>
-          {incoming.map((u) => (
-            <tr key={u.id}>
-              <td>{u.product.title}</td>
-              <td className="muted">{u.untouched ? "unopened" : "—"}</td>
-              <td className="row">
-                <button onClick={() => receive(u.id, true)}>Unopened</button>
-                <button
-                  className="secondary"
-                  onClick={() => receive(u.id, false)}
-                >
-                  Opened
-                </button>
-              </td>
-            </tr>
-          ))}
-          {incoming.length === 0 && (
+      <div className="table-wrap">
+        <table>
+          <thead>
             <tr>
-              <td colSpan={3} className="muted">
-                No incoming returns.
-              </td>
+              <th>Item</th>
+              <th>Claimed</th>
+              <th>Receive as…</th>
             </tr>
-          )}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {incoming.map((u) => (
+              <tr key={u.id}>
+                <td>{u.product.title}</td>
+                <td className="muted">{u.untouched ? "unopened" : "—"}</td>
+                <td className="row">
+                  <button onClick={() => receive(u.id, true)}>Unopened</button>
+                  <button
+                    className="secondary"
+                    onClick={() => receive(u.id, false)}
+                  >
+                    Opened
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {incoming.length === 0 && (
+              <tr>
+                <td colSpan={3} className="muted">
+                  No incoming returns.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
 
-      <h3 style={{ marginTop: 32 }}>
-        Storage watchlist{" "}
+      <h3
+        style={{ marginTop: 32, display: "flex", alignItems: "center", gap: 8 }}
+      >
+        <Activity size={18} /> Storage watchlist{" "}
         <span className="muted">(closest to liquidation first)</span>
       </h3>
-      <table>
-        <thead>
-          <tr>
-            <th>Item</th>
-            <th>State</th>
-            <th>Grade</th>
-            <th>Storage / value</th>
-            <th>Ratio</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {watchlist.map((u) => (
-            <tr key={u.id}>
-              <td>{u.product.title}</td>
-              <td>
-                <span className="badge">{u.state}</span>
-              </td>
-              <td>
-                <span className={`badge grade-${u.grade}`}>{u.grade}</span>
-              </td>
-              <td className="muted">
-                ₹{u.storage_cost_accrued} / ₹{u.est_value}
-              </td>
-              <td>
-                <div className="ratio-bar">
-                  <div
-                    className="ratio-fill"
-                    style={{
-                      width: `${Math.min(100, u.storage_ratio * 100)}%`,
-                    }}
-                  />
-                </div>
-              </td>
-              <td className="row">
-                {u.state === "AT_FACILITY" && (
-                  <button onClick={() => relist(u.id)}>Relist</button>
-                )}
-                <button
-                  className="secondary"
-                  onClick={() => dispose(u.id, "DONATED")}
-                >
-                  Donate
-                </button>
-                <button
-                  className="danger"
-                  onClick={() => dispose(u.id, "LIQUIDATE")}
-                >
-                  Liquidate
-                </button>
-              </td>
-            </tr>
-          ))}
-          {watchlist.length === 0 && (
+      <div className="table-wrap">
+        <table>
+          <thead>
             <tr>
-              <td colSpan={6} className="muted">
-                Floor is clear.
-              </td>
+              <th>Item</th>
+              <th>State</th>
+              <th>Grade</th>
+              <th>Storage / value</th>
+              <th>Ratio</th>
+              <th>Actions</th>
             </tr>
-          )}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {watchlist.map((u) => (
+              <tr key={u.id}>
+                <td>{u.product.title}</td>
+                <td>
+                  <span className="badge">{u.state}</span>
+                </td>
+                <td>
+                  <span className={`badge grade-${u.grade}`}>{u.grade}</span>
+                </td>
+                <td className="muted">
+                  ₹{u.storage_cost_accrued} / ₹{u.est_value}
+                </td>
+                <td>
+                  <div className="ratio-bar">
+                    <div
+                      className="ratio-fill"
+                      style={{
+                        width: `${Math.min(100, u.storage_ratio * 100)}%`,
+                      }}
+                    />
+                  </div>
+                </td>
+                <td className="row">
+                  {u.state === "AT_FACILITY" && (
+                    <button onClick={() => relist(u.id)}>Relist</button>
+                  )}
+                  <button
+                    className="secondary"
+                    onClick={() => dispose(u.id, "DONATED")}
+                  >
+                    Donate
+                  </button>
+                  <button
+                    className="danger"
+                    onClick={() => dispose(u.id, "LIQUIDATE")}
+                  >
+                    Liquidate
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {watchlist.length === 0 && (
+              <tr>
+                <td colSpan={6} className="muted">
+                  Floor is clear.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
-from greencredits.models import GreenCreditAccount, Reward
+from greencredits.models import GreenCreditAccount
+from greencredits.logic import seed_rewards
 
 class Command(BaseCommand):
     help = 'Seed demo green credit accounts and rewards.'
@@ -23,19 +24,5 @@ class Command(BaseCommand):
             except User.DoesNotExist:
                 self.stdout.write(self.style.WARNING(f'User {username} not found'))
 
-        rewards = [
-            ("₹50 Mobile Recharge", "Mobile top-up", 50, "📱"),
-            ("₹100 Mobile Recharge", "Mobile top-up", 90, "📱"),
-            ("Plant a Tree", "We plant a tree for you", 30, "🌳"),
-            ("Free Coffee Voucher", "Enjoy a free coffee", 40, "☕"),
-            ("₹200 Amazon Pay", "Amazon Pay balance", 150, "💳"),
-            ("Exclusive Green Badge", "Profile badge", 10, "🏅"),
-        ]
-        for title, desc, cost, icon in rewards:
-            Reward.objects.get_or_create(title=title, defaults={
-                'description': desc,
-                'cost': cost,
-                'icon': icon,
-                'active': True,
-            })
+        seed_rewards()
         self.stdout.write(self.style.SUCCESS('Seeded rewards'))

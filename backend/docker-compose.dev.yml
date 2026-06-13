@@ -1,0 +1,27 @@
+# Hot-reload dev overlay for the Orbit frontend.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+#
+# Replaces the production nginx frontend with a Vite dev server that has HMR.
+# Source is bind-mounted so edits on the host reload instantly in the browser.
+# Open http://localhost:5173
+
+services:
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile.dev
+    command: npm run dev -- --host 0.0.0.0 --port 5173
+    environment:
+      # Vite proxies /api and /media to the backend service inside the network.
+      VITE_API_PROXY: http://backend:8000
+      CHOKIDAR_USEPOLLING: "true"
+    volumes:
+      # Live source for HMR…
+      - ../frontend:/app
+      # …but keep the container's own node_modules (don't shadow with host).
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend

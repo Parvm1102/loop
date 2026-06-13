@@ -20,6 +20,9 @@ services:
     restart: unless-stopped
     volumes:
       - media:/app/media
+      # Real catalog photos for the boot-time seed (lives outside the build
+      # context, so mount it read-only rather than COPY it into the image).
+      - ../images:/app/images:ro
     depends_on:
       - db
       - redis

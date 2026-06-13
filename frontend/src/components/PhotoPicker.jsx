@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { preparePhoto } from "../lib/image";
+import { Plus, X, Loader, AlertCircle } from "./icons";
 
 const MAX = 6;
 const NAME_RE = /\.(jpe?g|png|webp)$/i;
@@ -65,12 +66,7 @@ export default function PhotoPicker({ files, onChange, onMetadata }) {
             <img
               src={URL.createObjectURL(f)}
               alt={f.name}
-              style={{
-                width: 64,
-                height: 64,
-                objectFit: "cover",
-                borderRadius: 8,
-              }}
+              className="photo-tile"
             />
             <button
               type="button"
@@ -81,28 +77,26 @@ export default function PhotoPicker({ files, onChange, onMetadata }) {
                 position: "absolute",
                 top: -6,
                 right: -6,
-                width: 20,
-                height: 20,
+                width: 22,
+                height: 22,
+                minHeight: 0,
                 padding: 0,
                 borderRadius: "50%",
-                fontSize: 11,
-                lineHeight: "20px",
               }}
             >
-              <span aria-hidden>Remove</span>
+              <X size={13} />
             </button>
           </div>
         ))}
         {files.length < MAX && (
           <button
             type="button"
-            className="secondary"
+            className="photo-add"
             onClick={() => inputRef.current?.click()}
-            style={{ width: 64, height: 64 }}
             title="Add photos"
             disabled={busy}
           >
-            {busy ? "…" : "Add"}
+            {busy ? <Loader size={20} className="spin" /> : <Plus size={20} />}
           </button>
         )}
       </div>
@@ -117,7 +111,11 @@ export default function PhotoPicker({ files, onChange, onMetadata }) {
           e.target.value = "";
         }}
       />
-      {err && <div className="error">{err}</div>}
+      {err && (
+        <div className="error">
+          <AlertCircle size={14} /> {err}
+        </div>
+      )}
       <div className="muted" style={{ marginTop: 4 }}>
         {files.length}/{MAX} photos — used by AI grading
       </div>
