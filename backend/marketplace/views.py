@@ -21,7 +21,7 @@ from .models import (
     OrderStates,
     ReturnReasons,
 )
-from .returns import is_return_eligible, return_deadline
+from .returns import buyer_started_resale, is_return_eligible, return_deadline
 from .serializers import OrderSerializer
 
 log = logging.getLogger(__name__)
@@ -130,6 +130,12 @@ def request_return(request, pk):
     if order.state != OrderStates.DELIVERED:
         return Response(
             {"detail": f"Cannot return from state {order.state}."},
+            status=status.HTTP_409_CONFLICT,
+        )
+    # Already handed to resale -> not the buyer's to return anymore.
+    if buyer_started_resale(order):
+        return Response(
+            {"detail": "This item has been resold and can no longer be returned."},
             status=status.HTTP_409_CONFLICT,
         )
     # Return window closed -> no return, but the item can still be resold.

@@ -35,6 +35,7 @@ def start_resale_from_order(user, order, photo_paths, age_months=None):
     """Resell an item bought on the platform. We already have its unit, original
     price (what the user paid) and a reference image for grading."""
     from grading.services import create_resale_assessment
+    from marketplace.models import OrderStates
 
     unit = order.listing.unit
     product = unit.product
@@ -50,6 +51,11 @@ def start_resale_from_order(user, order, photo_paths, age_months=None):
         age_months=age_months,
         linked=True,
     )
+    # Once an item is handed to resale it's no longer the buyer's to return:
+    # settle the originating order so it drops off the returnable Orders list
+    # (and the resale-candidates list), mirroring the old synchronous flow.
+    if order.state == OrderStates.DELIVERED:
+        order.transition(OrderStates.SETTLED, actor=user, resold=True)
     assessment = create_resale_assessment(
         unit, photo_paths, _reference_paths(product), triggered_by=user
     )
