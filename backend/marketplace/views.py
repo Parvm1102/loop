@@ -43,6 +43,11 @@ def place_order(request):
     (ack=true). The guard runs OUTSIDE the row lock so we never hold a DB lock
     across an LLM call; a missing/inactive listing falls through to the
     authoritative check inside the atomic block.
+
+    Pre-loved items are auction-backed (Next Best Owner): if the listing has an
+    associated Dutch auction we delegate to that engine so the buyer pays the
+    current descending price and earns the green-credit bonus, and the auction is
+    closed atomically. Plain (NEW) listings keep the simple flow below.
     """
     listing_id = request.data.get("listing_id")
     chosen_size = (request.data.get("chosen_size") or "").strip()
@@ -79,12 +84,6 @@ def place_order(request):
                 },
                 status=status.HTTP_409_CONFLICT,
             )
-    Pre-loved items are auction-backed (Next Best Owner): if the listing has an
-    associated Dutch auction we delegate to that engine so the buyer pays the
-    current descending price and earns the green-credit bonus, and the auction is
-    closed atomically. Plain (NEW) listings keep the simple flow below.
-    """
-    listing_id = request.data.get("listing_id")
 
     # Auction-backed? Hand off to the Next Best Owner buy (price-drop bonus +
     # payout + auction close, all row-locked there).
